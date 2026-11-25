@@ -1,37 +1,47 @@
 <!doctype html>
-<html lang="en" dir="auto">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="EyeCheck Assistant: private, AI-assisted preliminary eye screening. On-device Gemini Nano first, cloud Gemini only with consent, built on Firebase AI Logic.">
+<meta name="description" content="EyeCheck Assistant: private, AI-assisted preliminary eye screening. Gemini Nano on-device first, cloud Gemini only with your explicit consent. Built on Firebase AI Logic.">
 <meta name="theme-color" content="#0d47a1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.google.com https://www.gstatic.com https://www.recaptcha.net; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https:; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>EyeCheck Assistant</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230d47a1'/%3E%3Cpath d='M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z' fill='none' stroke='white' stroke-width='1.6'/%3E%3Ccircle cx='12' cy='12' r='2.6' fill='white'/%3E%3C/svg%3E">
 </head>
 <body>
+<a class="skip" href="#scan" data-i18n="skip">Skip to screening</a>
 <header class="top no-print">
   <div class="wrap top-in">
-    <div class="brand">
+    <a class="brand" href="#home" aria-label="EyeCheck">
       <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
       <span>EyeCheck</span>
+    </a>
+    <nav class="nav" aria-label="Main"><a href="#scan" data-i18n="nav_scan">Screening</a><a href="#how" data-i18n="nav_how">How it works</a><a href="#history" data-i18n="nav_history">History</a><a href="#privacy" data-i18n="nav_privacy">Privacy</a><a href="#about" data-i18n="nav_about">About</a></nav>
+    <div class="top-r">
+      <button id="lang" class="iconbtn" type="button" aria-label="Switch language">عربي</button>
+      <button id="theme" class="iconbtn" type="button" data-i18n-attr="aria-label:theme_toggle" aria-label="Toggle dark mode"><span aria-hidden="true">◐</span></button>
     </div>
-    <nav class="nav"><a href="#scan">Scan</a><a href="#history">History</a><a href="#about">About</a></nav>
-    <div class="top-r"><button id="lang" class="theme lang" type="button" aria-label="Switch language">عربي</button><span class="pill pill-soft hide-s">#BuildHybridAI</span><button id="theme" class="theme" type="button" aria-label="Toggle dark mode">◐</button></div>
   </div>
 </header>
 
-<section class="hero no-print">
-  <div class="wrap">
-    <div class="eye3d" aria-hidden="true"><svg viewBox="0 0 200 120"><defs><radialGradient id="ir" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#00e5ff"/><stop offset=".55" stop-color="#1e88e5"/><stop offset="1" stop-color="#0d47a1"/></radialGradient><clipPath id="lid"><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z"/></clipPath></defs><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="#fff" opacity=".95"/><g clip-path="url(#lid)"><circle class="iris" cx="100" cy="60" r="34" fill="url(#ir)"/><circle cx="100" cy="60" r="15" fill="#06142b"/><circle cx="110" cy="50" r="6" fill="#fff" opacity=".85"/><rect class="scanline" x="0" y="0" width="200" height="3" fill="#00e5ff"/></g><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="none" stroke="#bbdefb" stroke-width="2"/></svg></div>
-    <p class="eyebrow">AI-assisted preliminary eye screening</p>
-    <h1>Check your eyes.<br><span class="grad">Keep your images private.</span></h1>
-    <p class="lead">Add eye photos and describe your symptoms. Gemini Nano analyzes them <b>on your device</b>. Cloud Gemini is used only if you give explicit consent.</p>
-    <div class="flow" aria-label="How it works">
-      <div class="step"><span class="n">1</span><b>Add photos</b><small>Upload or use the camera</small></div>
-      <div class="arrow" aria-hidden="true">→</div>
-      <div class="step"><span class="n">2</span><b>On-device screening</b><small>Gemini Nano, private</small></div>
-      <div class="arrow" aria-hidden="true">→</div>
-      <div class="step"><span class="n">3</span><b>Report</b><small>Cards, history, print</small></div>
+<section id="home" class="hero no-print">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <p class="eyebrow" data-i18n="hero_eyebrow">Preliminary eye screening, privacy first</p>
+      <h1><span data-i18n="hero_h1a">Understand your eye symptoms.</span> <span class="grad" data-i18n="hero_h1b">Keep your photos on your device.</span></h1>
+      <p class="lead" data-i18n="hero_lead">Answer a short symptom check, add eye photos, and get a structured preliminary summary. Gemini Nano analyzes everything on your device. Cloud Gemini is used only if you review what will be sent and approve it.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#scan" data-i18n="hero_cta">Start screening</a>
+        <a class="btn btn-ghost on-dark" href="#how" data-i18n="hero_cta2">How it works</a>
+      </div>
+      <ul class="trust" aria-label="Key facts">
+        <li data-i18n="trust1">On-device first</li><li data-i18n="trust2">No silent cloud fallback</li><li data-i18n="trust3">Not a diagnosis</li>
+      </ul>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 200 120"><defs><radialGradient id="ir" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#00e5ff"/><stop offset=".55" stop-color="#1e88e5"/><stop offset="1" stop-color="#0d47a1"/></radialGradient><clipPath id="lid"><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z"/></clipPath></defs><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="#fff" opacity=".95"/><g clip-path="url(#lid)"><circle class="iris" cx="100" cy="60" r="34" fill="url(#ir)"/><circle cx="100" cy="60" r="15" fill="#06142b"/><circle cx="110" cy="50" r="6" fill="#fff" opacity=".85"/><rect class="scanline" x="0" y="0" width="200" height="3" fill="#00e5ff"/></g><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="none" stroke="#bbdefb" stroke-width="2"/></svg>
     </div>
   </div>
 </section>
@@ -39,132 +49,214 @@
 <main class="wrap">
   <div class="notice" role="note">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3L12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <p><b>Preliminary screening, not a medical diagnosis.</b> AI can be wrong and a phone photo cannot replace an eye exam. Results show possible signs only. See an eye doctor for any concern.</p>
+    <p><b data-i18n="notice_b">Preliminary screening, not a medical diagnosis.</b> <span data-i18n="notice_t">AI can be wrong, and a phone photo cannot replace an eye exam. Always see an eye doctor if you are worried. In an emergency, call your local emergency number.</span></p>
   </div>
 
-  <section id="urgent" class="urgent" role="alert" hidden>
+  <section id="how" class="block no-print" aria-labelledby="how-h">
+    <h2 id="how-h" data-i18n="how_h">How the screening works</h2>
+    <ol class="steps4">
+      <li><span class="n">1</span><b data-i18n="how1_t">Capture</b><p data-i18n="how1_d">Guided photos of each eye with automatic checks for sharpness, lighting and glare.</p></li>
+      <li><span class="n">2</span><b data-i18n="how2_t">Symptom check</b><p data-i18n="how2_d">Eleven short questions. Fixed safety rules look for red-flag symptoms before any AI runs.</p></li>
+      <li><span class="n">3</span><b data-i18n="how3_t">On-device AI</b><p data-i18n="how3_d">Gemini Nano in Chrome describes visible features and summarizes your symptoms without sending anything out.</p></li>
+      <li><span class="n">4</span><b data-i18n="how4_t">Report</b><p data-i18n="how4_d">A structured report with urgency, limits, next steps and a summary you can show a doctor.</p></li>
+    </ol>
+    <div class="hybrid">
+      <svg viewBox="0 0 640 150" role="img" aria-labelledby="hy-t"><title id="hy-t" data-i18n="hy_title">Hybrid inference: photos and answers stay on the device unless you approve a cloud request</title>
+        <rect x="10" y="20" width="210" height="110" rx="14" class="d-box"/><text x="115" y="52" text-anchor="middle" class="d-h" data-i18n="hy_dev">Your device</text><text x="115" y="80" text-anchor="middle" class="d-s">Photos, answers</text><text x="115" y="102" text-anchor="middle" class="d-s">Gemini Nano (default)</text>
+        <path d="M225 75h185" class="d-line"/><rect x="262" y="55" width="110" height="40" rx="20" class="d-gate"/><text x="317" y="80" text-anchor="middle" class="d-g" data-i18n="hy_gate">Your consent</text>
+        <rect x="420" y="20" width="210" height="110" rx="14" class="d-box d-cloud"/><text x="525" y="52" text-anchor="middle" class="d-h" data-i18n="hy_cloud">Cloud Gemini</text><text x="525" y="80" text-anchor="middle" class="d-s">Firebase AI Logic</text><text x="525" y="102" text-anchor="middle" class="d-s">App Check protected</text>
+      </svg>
+      <p data-i18n="hy_p">Hybrid inference means the private path is the default. If Gemini Nano cannot run on your device, the app tells you, shows exactly what a cloud request would contain, and waits for your approval. There is no automatic fallback.</p>
+    </div>
+  </section>
+
+  <section id="urgent" class="urgent no-print" role="alert" hidden>
     <div class="urgent-h">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v6M12 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <h2>Possible urgent symptoms</h2>
+      <h2 id="urgentTitle" data-i18n="urg_emergency_t">Seek emergency care now</h2>
     </div>
-    <p id="urgentWhy">What you described can be a warning sign. Please get care now instead of waiting.</p>
-    <ul>
-      <li>Sudden loss of vision, or a dark curtain over part of your sight</li>
-      <li>Severe eye pain, or new flashes and many new floaters</li>
-      <li>A chemical in the eye, or an injury to the eye</li>
-    </ul>
-    <p class="urgent-cta">Go to an emergency department or call your local emergency number.</p>
+    <p id="urgentBody"></p>
+    <ul id="urgentWhy"></ul>
+    <p class="urgent-cta" data-i18n="urg_cta">Go to an emergency department or call your local emergency number. Do not wait for this app.</p>
   </section>
 
-  <section id="scan" class="card no-print">
-    <div class="card-h"><h2>1. Eye photos</h2><span id="engineStatus" class="badge badge-fallback">Checking on-device AI</span></div>
-    <p class="muted">Use a clear, well-lit close-up. Add one or both eyes. Two eyes are compared side by side.</p>
-    <div class="slots">
-      <div class="slot" data-eye="left">
-        <div class="slot-h">Left eye</div>
-        <div class="drop" id="drop-left"><span class="ph">No photo yet</span><img alt="Left eye preview" hidden></div>
-        <div class="slot-b">
-          <button class="btn btn-ghost" type="button" data-act="upload">Upload</button>
-          <button class="btn btn-ghost" type="button" data-act="camera">Camera</button>
-          <button class="btn btn-link" type="button" data-act="remove" hidden>Remove</button>
+  <section id="scan" class="card no-print" aria-labelledby="scan-h">
+    <div class="card-h"><h2 id="scan-h" data-i18n="scan_h">Eye screening</h2><span id="engineStatus" class="badge badge-fallback" role="status" data-i18n="eng_checking">Checking on-device AI</span></div>
+    <ol class="stepper" id="stepper" aria-label="Progress">
+      <li data-step="1"><span>1</span><b data-i18n="st_photos">Photos</b></li>
+      <li data-step="2"><span>2</span><b data-i18n="st_symptoms">Symptoms</b></li>
+      <li data-step="3"><span>3</span><b data-i18n="st_review">Review</b></li>
+      <li data-step="4"><span>4</span><b data-i18n="st_results">Results</b></li>
+    </ol>
+
+    <div id="p1" class="panel">
+      <h3 data-i18n="p1_h">Add eye photos</h3>
+      <p class="muted" data-i18n="p1_p">Photos are optional but make the summary more useful. Add one or both eyes. Each photo is checked on your device before anything else happens.</p>
+      <details class="guide" open>
+        <summary data-i18n="guide_h">How to take a good eye photo</summary>
+        <ul>
+          <li data-i18n="guide1">Hold the camera about 15 to 20 cm (6 to 8 in) from the eye, with the eye wide open and looking at the lens.</li>
+          <li data-i18n="guide2">Use soft daylight or an even room light. Avoid the flash and bright reflections.</li>
+          <li data-i18n="guide3">Take off glasses. Keep the whole eye and both eyelids in the frame.</li>
+          <li data-i18n="guide4">Hold still until the picture is sharp. Retake if the check below says so.</li>
+        </ul>
+      </details>
+      <div class="slots">
+        <div class="slot" data-eye="right">
+          <div class="slot-h" data-i18n="eye_right">Right eye</div>
+          <div class="drop"><span class="ph" data-i18n="no_photo">No photo yet</span><img alt="" hidden></div>
+          <div class="slot-b">
+            <button class="btn btn-ghost" type="button" data-act="upload" data-i18n="btn_upload">Upload</button>
+            <button class="btn btn-ghost" type="button" data-act="camera" data-i18n="btn_camera">Camera</button>
+            <button class="btn btn-link" type="button" data-act="remove" hidden data-i18n="btn_remove">Remove</button>
+          </div>
+          <ul class="qc" aria-live="polite"></ul>
+          <p class="msg" role="alert" hidden></p>
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Right eye photo">
         </div>
-        <input type="file" accept="image/*" hidden>
-      </div>
-      <div class="slot" data-eye="right">
-        <div class="slot-h">Right eye</div>
-        <div class="drop" id="drop-right"><span class="ph">No photo yet</span><img alt="Right eye preview" hidden></div>
-        <div class="slot-b">
-          <button class="btn btn-ghost" type="button" data-act="upload">Upload</button>
-          <button class="btn btn-ghost" type="button" data-act="camera">Camera</button>
-          <button class="btn btn-link" type="button" data-act="remove" hidden>Remove</button>
+        <div class="slot" data-eye="left">
+          <div class="slot-h" data-i18n="eye_left">Left eye</div>
+          <div class="drop"><span class="ph" data-i18n="no_photo">No photo yet</span><img alt="" hidden></div>
+          <div class="slot-b">
+            <button class="btn btn-ghost" type="button" data-act="upload" data-i18n="btn_upload">Upload</button>
+            <button class="btn btn-ghost" type="button" data-act="camera" data-i18n="btn_camera">Camera</button>
+            <button class="btn btn-link" type="button" data-act="remove" hidden data-i18n="btn_remove">Remove</button>
+          </div>
+          <ul class="qc" aria-live="polite"></ul>
+          <p class="msg" role="alert" hidden></p>
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Left eye photo">
         </div>
-        <input type="file" accept="image/*" hidden>
       </div>
+      <p class="muted small" data-i18n="p1_fmt">Accepted: JPG, PNG or WebP, up to 15 MB. Photos are resized to 1024 px on your device.</p>
+      <div class="nav-row"><span></span><button id="p1next" class="btn btn-primary" type="button" data-i18n="btn_next">Next</button></div>
     </div>
 
-    <h2 class="sec">2. Symptoms <span class="opt">optional</span></h2>
-    <textarea id="symptoms" rows="4" maxlength="1500" placeholder="e.g. Right eye is red and itchy for 3 days, no pain"></textarea>
+    <div id="p2" class="panel" hidden>
+      <h3 data-i18n="p2_h">Symptom check</h3>
+      <div class="prog"><div class="prog-bar"><i id="qBar"></i></div><span id="qCount" aria-live="polite"></span></div>
+      <fieldset id="qBox" class="qbox"><legend id="qLegend"></legend><div id="qOpts" class="opts"></div><label id="qTextWrap" class="qtext" hidden><span id="qTextHint" data-i18n="q_text_hint">Anything else you want to add? (optional)</span><textarea id="qText" rows="4" maxlength="500"></textarea><small id="qTextCount"></small></label><p id="qErr" class="msg" role="alert" hidden></p></fieldset>
+      <div class="nav-row"><button id="qBack" class="btn btn-ghost" type="button" data-i18n="btn_back">Back</button><button id="qNext" class="btn btn-primary" type="button" data-i18n="btn_next">Next</button></div>
+    </div>
 
-    <h2 class="sec">3. Privacy</h2>
-    <p class="muted" id="privacyNote">Screening runs on your device with Gemini Nano. If your browser cannot run it, nothing is sent anywhere. You will see exactly what would be sent to cloud Gemini and can choose to send it or cancel.</p>
-    <div id="cloudPreview" class="preview" hidden>
-      <h3>Send to cloud Gemini?</h3>
-      <p class="muted" id="cloudWhy"></p>
-      <div id="cloudThumbs" class="thumbs"></div>
-      <pre id="cloudText" class="out"></pre>
-      <div class="row"><button id="cloudSend" class="btn btn-cloud" type="button">Send to cloud Gemini</button><button id="cloudCancel" class="btn btn-ghost" type="button">Cancel, keep private</button></div>
+    <div id="p3" class="panel" hidden>
+      <h3 data-i18n="p3_h">Review your answers</h3>
+      <div id="reviewPhotos" class="review-photos"></div>
+      <dl id="reviewList" class="review"></dl>
+      <p id="reviewNote" class="muted"></p>
+      <p class="privnote" data-i18n="p3_priv">Nothing leaves your device when you run the on-device screening. If Gemini Nano is not available, you will see exactly what a cloud request would contain and decide then.</p>
+      <p id="scanMsg" class="msg" role="alert" hidden></p>
+      <div class="nav-row"><button id="p3back" class="btn btn-ghost" type="button" data-i18n="btn_back">Back</button><button id="analyze" class="btn btn-primary" type="button"><span data-i18n="btn_run">Run on-device screening</span></button></div>
     </div>
-    <div class="row">
-      <button id="analyze" class="btn btn-primary" type="button">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <span>Run screening</span>
-      </button>
-      <span class="hint"><span class="dot dot-device"></span>On-device first</span>
+
+    <div id="p4" class="panel" hidden>
+      <h3 data-i18n="p4_h">Screening in progress</h3>
+      <ol id="progress" class="progress" aria-live="polite"></ol>
+      <div id="cloudPreview" class="cloud" hidden>
+        <h4 id="cloudWhy"></h4>
+        <p data-i18n="cloud_lead">This is exactly what would be sent to cloud Gemini through Firebase AI Logic:</p>
+        <div id="cloudThumbs" class="thumbs"></div>
+        <pre id="cloudText"></pre>
+        <label class="check"><input type="checkbox" id="cloudAck"><span data-i18n="cloud_ack">I understand my photos and answers will leave this device and be processed by Google's cloud Gemini.</span></label>
+        <div class="nav-row"><button id="cloudCancel" class="btn btn-ghost" type="button" data-i18n="cloud_cancel">Cancel, keep everything private</button><button id="cloudSend" class="btn btn-primary" type="button" disabled data-i18n="cloud_send">Send to cloud Gemini</button></div>
+      </div>
+      <p id="runMsg" class="msg" role="alert" hidden></p>
+      <div class="nav-row"><button id="p4back" class="btn btn-ghost" type="button" hidden data-i18n="btn_back">Back</button><span></span></div>
     </div>
-    <p id="scanMsg" class="msg" hidden></p>
   </section>
 
-  <section id="report" class="card result" hidden>
-    <div class="card-h">
-      <h2>Screening report</h2>
-      <span id="engineBadge" class="badge badge-device">On-device</span>
-    </div>
-    <p class="muted" id="reportMeta"></p>
+  <section id="report" class="card report" hidden aria-labelledby="rep-h">
+    <div class="card-h"><h2 id="rep-h" data-i18n="rep_h">Screening report</h2><span id="engineBadge" class="badge"></span></div>
+    <p id="reportMeta" class="muted"></p>
     <div id="overall" class="overall"></div>
-    <div id="cards" class="grid"></div>
-    <div id="eyesCmp" class="cmp"></div>
-    <div id="steps" class="steps"></div>
-    <div class="disc">Preliminary AI-assisted screening only. Not a medical diagnosis and not clinically validated. Please see an eye doctor for any concern. In an emergency, contact local emergency services.</div>
-    <div class="row no-print">
-      <button id="print" class="btn btn-primary" type="button">Print / save as PDF</button>
-      <button id="explain" class="btn btn-cloud" type="button">Explain in plain language (cloud, text only)</button>
+    <p class="ai-flag" data-i18n="rep_ai_flag">Everything below marked "AI observation" is a machine description of a photo. It is not a confirmed medical finding.</p>
+    <div class="grid2">
+      <div class="panel-s"><h4 data-i18n="rep_quality">Photo quality</h4><div id="qualityBox"></div></div>
+      <div class="panel-s"><h4 data-i18n="rep_symptoms">Symptom summary</h4><div id="symBox"></div></div>
     </div>
+    <h4 data-i18n="rep_eyes">AI observations by eye</h4>
+    <div id="eyesCmp" class="eyes-cmp"></div>
+    <h4 data-i18n="rep_assess">What can and cannot be assessed from a photo</h4>
+    <table class="tbl" id="assessTbl"><caption class="sr" data-i18n="rep_assess">What can and cannot be assessed from a photo</caption><thead><tr><th scope="col" data-i18n="col_cond">Condition</th><th scope="col" data-i18n="col_status">Status</th></tr></thead><tbody></tbody></table>
+    <div id="steps" class="steps"></div>
+    <div id="limits" class="steps"></div>
+    <div class="row-btns no-print">
+      <button id="print" class="btn btn-ghost" type="button" data-i18n="btn_print">Print / save as PDF</button>
+      <button id="docSum" class="btn btn-ghost" type="button" data-i18n="btn_doc">Doctor summary</button>
+      <button id="explain" class="btn btn-ghost" type="button" data-i18n="btn_explain">Plain-language explanation (cloud, text only)</button>
+      <button id="again" class="btn btn-primary" type="button" data-i18n="btn_again">New screening</button>
+    </div>
+    <pre id="docOut" class="doc" hidden></pre>
     <div id="explainOut" class="out" hidden></div>
+    <p class="disc" data-i18n="disc">AI-assisted preliminary screening only. Not a medical diagnosis and not clinically validated. See an eye doctor for any concern. In an emergency call your local emergency number.</p>
   </section>
 
-  <section id="history" class="card no-print">
-    <div class="card-h"><h2>Session history</h2><button id="clearHist" class="btn btn-link" type="button" hidden>Clear all</button></div>
-    <p class="muted">Saved only in this browser tab for this session. Photos are never stored, only a small thumbnail.</p>
-    <div id="histList" class="hist"><p class="muted" id="histEmpty">No scans yet.</p></div>
+  <section id="history" class="card no-print" aria-labelledby="hist-h">
+    <div class="card-h"><h2 id="hist-h" data-i18n="hist_h">Eye health timeline</h2><button id="clearHist" class="btn btn-link" type="button" hidden data-i18n="hist_clear">Clear all</button></div>
+    <p class="muted" id="histMode"></p>
+    <label class="check"><input type="checkbox" id="persistToggle"><span data-i18n="hist_persist">Keep my history on this device between visits (up to 30 days)</span></label>
+    <ol id="histList" class="timeline"></ol>
+    <div id="cmpBox" class="cmp" hidden></div>
+    <p class="muted small" data-i18n="hist_note">Differences between two AI-generated reports do not show that anything has improved or worsened. Photo conditions and wording change between runs.</p>
   </section>
 
-  <section id="tips" class="two no-print">
-    <div class="card"><h2 data-i="tipsT">Eye-care tips</h2><ul class="tips">
-      <li data-i="tip1">Follow the 20-20-20 rule: every 20 minutes look at something 20 feet away for 20 seconds.</li>
-      <li data-i="tip2">Blink often and keep screens slightly below eye level.</li>
-      <li data-i="tip3">Wear sunglasses with UV protection outdoors.</li>
-      <li data-i="tip4">Never rub your eyes. Wash hands before touching them or contact lenses.</li>
-      <li data-i="tip5">Get a full eye exam regularly, and yearly if you have diabetes.</li></ul>
-      <button id="remind" class="btn btn-ghost" type="button" data-i="remindB">Remind me every 20 minutes</button><p id="remindMsg" class="muted" hidden></p></div>
-    <div class="card"><h2 data-i="docT">Finding the right doctor</h2><ul class="tips">
-      <li data-i="doc1"><b>Optometrist:</b> vision tests, glasses, routine checks.</li>
-      <li data-i="doc2"><b>Ophthalmologist:</b> eye diseases, surgery, urgent problems.</li>
-      <li data-i="doc3">Bring your list of symptoms, medicines, and any earlier eye reports.</li>
-      <li data-i="doc4">Sudden vision change, severe pain, or injury: go to an emergency department.</li>
-      <li data-i="doc5">Search your local health directory or ask your insurer for in-network eye doctors.</li></ul></div>
+  <section id="care" class="block no-print" aria-labelledby="care-h">
+    <h2 id="care-h" data-i18n="care_h">Eye care and finding the right doctor</h2>
+    <div class="grid2">
+      <div class="panel-s"><h4 data-i18n="tipsT">Everyday eye care</h4><ul>
+        <li data-i18n="tip1">20-20-20 rule: every 20 minutes look at something 20 feet (6 m) away for 20 seconds.</li>
+        <li data-i18n="tip2">Blink often and keep screens slightly below eye level.</li>
+        <li data-i18n="tip3">Wear UV-blocking sunglasses outdoors.</li>
+        <li data-i18n="tip4">Do not rub your eyes. Wash your hands before touching your eyes or contact lenses.</li>
+        <li data-i18n="tip5">Get regular eye exams, every year if you have diabetes.</li></ul>
+        <button id="remind" class="btn btn-ghost" type="button" data-i18n="remindB">Remind me every 20 minutes</button><p id="remindMsg" class="muted small" hidden></p></div>
+      <div class="panel-s"><h4 data-i18n="docT">Which doctor?</h4><ul>
+        <li data-i18n="doc1">Optometrist: vision tests, glasses and routine checks.</li>
+        <li data-i18n="doc2">Ophthalmologist: eye disease, surgery and urgent problems.</li>
+        <li data-i18n="doc3">Bring your symptom list, medicines and any past eye reports.</li>
+        <li data-i18n="doc4">Sudden vision change, severe pain or an eye injury: go to emergency care.</li>
+        <li data-i18n="doc5">Search your local doctor directory or ask your insurer.</li></ul></div>
+    </div>
   </section>
 
-  <section id="about" class="engines no-print">
-    <div class="engine"><span class="badge badge-device">On-device</span><p>Gemini Nano in Chrome through Firebase AI Logic. Photos and text stay in your browser.</p></div>
-    <div class="engine"><span class="badge badge-cloud">Cloud</span><p>Gemini through Firebase AI Logic, only with your consent, protected by App Check.</p></div>
+  <section id="privacy" class="card no-print" aria-labelledby="priv-h">
+    <h2 id="priv-h" data-i18n="priv_h">Privacy center</h2>
+    <div class="grid2">
+      <div class="panel-s"><h4 data-i18n="priv_collect_h">What the app handles</h4><p data-i18n="priv_collect">Eye photos you add, your symptom answers and the optional free text. There are no accounts, no analytics and no advertising trackers.</p></div>
+      <div class="panel-s"><h4 data-i18n="priv_device_h">What stays on your device</h4><p data-i18n="priv_device">Photos and answers are processed in the browser. The on-device screening uses Gemini Nano in Chrome, so nothing is uploaded. Photos are never stored: only a small thumbnail and the report are kept in history.</p></div>
+      <div class="panel-s"><h4 data-i18n="priv_cloud_h">What can go to the cloud, and when</h4><p data-i18n="priv_cloud">Only if you press "Send to cloud Gemini" after seeing a preview and ticking the confirmation, or if you press "Plain-language explanation" (text summary only, no photos or symptom text). Cloud requests go through Firebase AI Logic, protected by Firebase App Check.</p></div>
+      <div class="panel-s"><h4 data-i18n="priv_app_h">Security checks that do contact Google</h4><p data-i18n="priv_app">To protect the AI service from abuse, Firebase App Check runs reCAPTCHA Enterprise when the page loads. It verifies the app. It does not receive your photos or answers.</p></div>
+      <div class="panel-s"><h4 data-i18n="priv_store_h">What is stored locally</h4><p id="privStore"></p></div>
+      <div class="panel-s"><h4 data-i18n="priv_delete_h">Delete your data</h4><p data-i18n="priv_delete">Use the buttons below. Closing the tab also removes tab-only history. Clearing site data in your browser removes everything.</p>
+        <div class="row-btns"><button id="delAll" class="btn btn-ghost" type="button" data-i18n="priv_del_btn">Delete all history and settings</button></div><p id="delMsg" class="muted small" role="status"></p></div>
+    </div>
+    <h4 data-i18n="log_h">Cloud requests made in this tab</h4>
+    <ol id="sendLog" class="sendlog"></ol>
+  </section>
+
+  <section id="about" class="block no-print" aria-labelledby="about-h">
+    <h2 id="about-h" data-i18n="about_h">About, methodology and limitations</h2>
+    <div class="grid2">
+      <div class="panel-s"><h4 data-i18n="about_what_h">What it is</h4><p data-i18n="about_what">EyeCheck Assistant is a preliminary screening aid built for the #BuildHybridAI 2026 hackathon on Firebase AI Logic. It organizes symptoms and describes visible features of eye photos so you can decide how quickly to seek care.</p></div>
+      <div class="panel-s"><h4 data-i18n="about_method_h">Methodology</h4><p data-i18n="about_method">1) Fixed rules check your answers and text for red-flag symptoms. 2) Photos are checked for sharpness, lighting, glare and size. 3) Gemini Nano (or cloud Gemini after consent) returns a structured JSON description. 4) The app validates it, removes invented numbers, and never lets the AI lower the urgency set by the fixed rules.</p></div>
+      <div class="panel-s"><h4 data-i18n="about_limits_h">Limitations</h4><ul>
+        <li data-i18n="lim1">Not a diagnosis, and not clinically validated. No accuracy figures are claimed.</li>
+        <li data-i18n="lim2">A photo of the outside of the eye cannot show the retina or optic nerve. Glaucoma, diabetic retinopathy, macular degeneration and retinal detachment are listed as not assessable.</li>
+        <li data-i18n="lim3">The red-flag rules are conservative but have not been reviewed by a clinician. They can miss cases and can over-warn.</li>
+        <li data-i18n="lim4">Gemini Nano needs desktop Chrome with the Prompt API and a downloaded model. Mobile browsers are not supported for on-device AI.</li></ul></div>
+      <div class="panel-s"><h4 data-i18n="about_stack_h">Technology</h4><p data-i18n="about_stack">Firebase AI Logic (hybrid inference), Gemini Nano via the Chrome Prompt API, Gemini in the cloud, Firebase App Check with reCAPTCHA Enterprise, Vite, plain JavaScript. Open source under Apache-2.0.</p></div>
+    </div>
   </section>
 </main>
 
-<dialog id="camDlg" class="cam">
-  <video id="camVideo" autoplay playsinline muted></video>
-  <p id="camErr" class="msg" hidden></p>
-  <div class="row">
-    <button id="camShot" class="btn btn-primary" type="button">Capture</button>
-    <button id="camClose" class="btn btn-ghost" type="button">Cancel</button>
-  </div>
-</dialog>
+<footer class="foot no-print"><div class="wrap"><span data-i18n="foot">EyeCheck Assistant. Preliminary screening only. Built for #BuildHybridAI 2026.</span> <a href="https://github.com/mohamedelhamady213-collab/eyecheck-assistant" rel="noopener">GitHub</a></div></footer>
 
-<footer class="foot no-print">
-  <div class="wrap">
-    <p>Built with Firebase AI Logic, Gemini Nano and Gemini. Open source (Apache-2.0). Not a medical device.</p>
-    <p><a href="https://github.com/mohamedelhamady213-collab/eyecheck-assistant" target="_blank" rel="noopener">View source on GitHub</a></p>
-  </div>
-</footer>
+<dialog id="camDlg" class="cam" aria-labelledby="camT">
+  <h3 id="camT" data-i18n="cam_h">Take a photo</h3>
+  <div class="cam-v"><video id="camVideo" autoplay playsinline muted></video><svg class="cam-guide" viewBox="0 0 100 60" aria-hidden="true"><ellipse cx="50" cy="30" rx="34" ry="17" fill="none" stroke="#00e5ff" stroke-width="1" stroke-dasharray="3 2"/></svg></div>
+  <p class="muted small" data-i18n="cam_tip">Fit the eye inside the oval, about 15 to 20 cm away, with soft light and no flash.</p>
+  <p id="camErr" class="msg" hidden role="alert"></p>
+  <div class="nav-row"><button id="camClose" class="btn btn-ghost" type="button" data-i18n="btn_cancel">Cancel</button><button id="camShot" class="btn btn-primary" type="button" data-i18n="cam_shot">Capture</button></div>
+</dialog>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

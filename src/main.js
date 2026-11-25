@@ -1,342 +1,439 @@
 import "./style.css";
-import { deviceOnlyModel, cloudModel, cloudModelLite } from "./firebase.js";
-async function cloudGen(input) {
-  try { return await cloudModel.generateContent(input); }
-  catch (e) { console.warn("Primary cloud model failed, trying lite:", e); return await cloudModelLite.generateContent(input); }
-}
+import * as models from "./firebase.js";
+import { createEngines } from "./engines.js";
+import { t, setLang, getLang, translateDom } from "./i18n.js";
+import { QUESTIONS, validate, buildSummary, summaryToText, sanitizeText, MAX_TEXT } from "./symptoms.js";
+import { triage as runTriage } from "./safety.js";
+import { checkFile, scaleSize, assess, OUT_MAX } from "./imagequality.js";
+import { buildPrompt, runScreening, runCloudWithConsent, validateReport, AiError, NOT_ASSESSABLE } from "./ai.js";
+import { createHistory, compare } from "./history.js";
+import { doctorSummary } from "./report.js";
 
+const engines = createEngines(models);
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const history = createHistory({ session: sessionStorage, local: localStorage });
 
-const RED_FLAGS = /(sudden|suddenly).*(vision loss|blind|can't see|cannot see)|loss of vision|severe (eye )?pain|flashes|curtain|chemical|trauma|injur|floaters/i;
-const CONDITIONS = ["Cataract", "Glaucoma", "Diabetic retinopathy", "Age-related macular degeneration"];
-let lang = localStorage.getItem("lang") || "en";
-const photos = { left: null, right: null }; // data URLs, kept in memory only
-let lastReport = null;
+const state = { step: 1, photos: { left: null, right: null }, answers: { history: [], text: "" }, q: 0, triage: null, ctx: null, cloudLog: [], busy: false };
+let nanoState = "unknown";
 
-// ---------- theme ----------
+// ---------- theme + language ----------
 const root = document.documentElement;
 const prefersDark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
 root.dataset.theme = localStorage.getItem("theme") || (prefersDark ? "dark" : "light");
-$("theme").addEventListener("click", () => {
-  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", root.dataset.theme);
-});
-
-// ---------- on-device availability ----------
-let nanoState = "unknown";
-async function checkNano() {
-  const badge = $("engineStatus");
-  try {
-    if (typeof LanguageModel === "undefined") throw new Error("no api");
-    const a = await LanguageModel.availability({ expectedInputs: [{ type: "text" }, { type: "image" }] });
-    nanoState = a;
-  } catch { nanoState = "unavailable"; }
-  const ok = nanoState !== "unavailable";
-  badge.className = "badge " + (ok ? "badge-device" : "badge-fallback");
-  badge.textContent = ok ? "On-device AI ready (Gemini Nano)" : "On-device AI not available here";
+$("theme").addEventListener("click", () => { root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark"; localStorage.setItem("theme", root.dataset.theme); });
+function applyLang(l) {
+  setLang(l); localStorage.setItem("lang", getLang());
+  root.lang = getLang(); root.dir = getLang() === "ar" ? "rtl" : "ltr";
+  $("lang").textContent = getLang() === "ar" ? "EN" : "عربي";
+  $("lang").setAttribute("aria-label", getLang() === "ar" ? "Switch to English" : "التبديل إلى العربية");
+  translateDom(); renderAll();
 }
-checkNano();
+$("lang").addEventListener("click", () => applyLang(getLang() === "ar" ? "en" : "ar"));
+
+// ---------- engine badge ----------
+async function checkNano() {
+  nanoState = await engines.nanoState();
+  renderNano();
+}
+function renderNano() {
+  const b = $("engineStatus");
+  const ok = nanoState === "available" || nanoState === "readily";
+  const dl = nanoState === "downloadable" || nanoState === "downloading" || nanoState === "after-download";
+  b.className = "badge " + (ok || dl ? "badge-device" : "badge-fallback");
+  b.textContent = t(ok ? "eng_ready" : dl ? "eng_download" : nanoState === "unknown" ? "eng_checking" : "eng_unavail");
+}
+
+// ---------- stepper ----------
+function setStep(n, scroll = true) {
+  state.step = n;
+  for (let i = 1; i <= 4; i++) $("p" + i).hidden = i !== n;
+  document.querySelectorAll("#stepper li").forEach((li) => {
+    const s = +li.dataset.step; li.classList.toggle("on", s === n); li.classList.toggle("done", s < n);
+    if (s === n) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+  });
+  if (!scroll) return;
+  const h = $("p" + n).querySelector("h3"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  $("scan").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+function showMsg(node, key, vars, info) { node.textContent = key ? t(key, vars) : ""; node.className = "msg" + (info ? " info" : ""); node.hidden = !key; }
 
 // ---------- photos ----------
-function downscale(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const max = 1024, k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      resolve(c.toDataURL("image/jpeg", 0.85));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read this image")); };
-    img.src = url;
-  });
+function slot(eye) { return document.querySelector(`.slot[data-eye=${eye}]`); }
+function setPhoto(eye, p) {
+  state.photos[eye] = p;
+  const s = slot(eye), img = s.querySelector("img");
+  img.hidden = !p; if (p) { img.src = p.dataUrl; img.alt = t("eye_" + eye); } else img.removeAttribute("src");
+  s.querySelector(".ph").hidden = !!p; s.querySelector(".drop").classList.toggle("has", !!p);
+  s.querySelector("[data-act=remove]").hidden = !p;
+  renderQc(eye);
 }
-function setPhoto(eye, dataUrl) {
-  photos[eye] = dataUrl;
-  const slot = document.querySelector(`.slot[data-eye=${eye}]`);
-  const img = slot.querySelector("img"), drop = slot.querySelector(".drop");
-  img.hidden = !dataUrl; if (dataUrl) img.src = dataUrl; else img.removeAttribute("src");
-  slot.querySelector(".ph").hidden = !!dataUrl;
-  drop.classList.toggle("has", !!dataUrl);
-  slot.querySelector('[data-act=remove]').hidden = !dataUrl;
+function renderQc(eye) {
+  const ul = slot(eye).querySelector(".qc"); ul.replaceChildren();
+  const p = state.photos[eye]; if (!p) return;
+  for (const c of p.quality.checks) { const li = el("li", "qc-" + c.status, t(`qc_${c.id}_${c.status}`)); ul.append(li); }
+  ul.append(el("li", "qc-sum " + (p.quality.retake ? "qc-warn" : "qc-ok"), t(p.quality.retake ? "qc_retake" : "qc_good")));
+}
+async function loadImage(blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    return await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("read")); i.src = url; });
+  } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+}
+async function processSource(src, w, h) {
+  const { w: ow, h: oh } = scaleSize(w, h, OUT_MAX);
+  const c = document.createElement("canvas"); c.width = ow; c.height = oh;
+  c.getContext("2d").drawImage(src, 0, 0, ow, oh);
+  const dataUrl = c.toDataURL("image/jpeg", 0.85);
+  const k = Math.min(1, 256 / Math.max(ow, oh)), aw = Math.max(1, Math.round(ow * k)), ah = Math.max(1, Math.round(oh * k));
+  const a = document.createElement("canvas"); a.width = aw; a.height = ah;
+  const actx = a.getContext("2d", { willReadFrequently: true }); actx.drawImage(c, 0, 0, aw, ah);
+  const rgba = actx.getImageData(0, 0, aw, ah);
+  let face = "unavailable";
+  if ("FaceDetector" in window) { try { const f = await new window.FaceDetector({ fastMode: true }).detect(c); face = f.length ? "found" : "none"; } catch { face = "unavailable"; } }
+  return { dataUrl, quality: assess({ naturalWidth: w, naturalHeight: h, rgba: { width: aw, height: ah, data: rgba.data }, face }) };
+}
+async function handleFile(eye, file) {
+  const s = slot(eye), msg = s.querySelector(".msg");
+  const chk = checkFile(file);
+  if (!chk.ok) { showMsg(msg, { format: "err_format", too_big: "err_too_big", empty: "err_empty", missing: "err_read" }[chk.code]); return; }
+  try {
+    const img = await loadImage(file);
+    setPhoto(eye, await processSource(img, img.naturalWidth, img.naturalHeight)); showMsg(msg, "");
+  } catch { showMsg(msg, "err_read"); }
 }
 let camEye = null, camStream = null;
-document.querySelectorAll(".slot").forEach((slot) => {
-  const eye = slot.dataset.eye, input = slot.querySelector("input[type=file]");
-  slot.addEventListener("click", async (ev) => {
+document.querySelectorAll(".slot").forEach((s) => {
+  const eye = s.dataset.eye, input = s.querySelector("input[type=file]");
+  s.addEventListener("click", (ev) => {
     const act = ev.target.closest("button")?.dataset.act;
     if (act === "upload") input.click();
-    if (act === "remove") setPhoto(eye, null);
+    if (act === "remove") { setPhoto(eye, null); showMsg(s.querySelector(".msg"), ""); }
     if (act === "camera") openCamera(eye);
   });
-  input.addEventListener("change", async () => {
-    if (!input.files[0]) return;
-    try { setPhoto(eye, await downscale(input.files[0])); } catch (e) { showMsg(e.message); }
-    input.value = "";
-  });
+  input.addEventListener("change", async () => { const f = input.files[0]; if (f) await handleFile(eye, f); input.value = ""; });
 });
 async function openCamera(eye) {
-  camEye = eye; $("camErr").hidden = true;
-  $("camDlg").showModal();
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-    $("camVideo").srcObject = camStream;
-  } catch {
-    $("camErr").textContent = "Camera not available or permission denied. Use Upload instead.";
-    $("camErr").hidden = false;
-  }
+  camEye = eye; $("camErr").hidden = true; $("camDlg").showModal();
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }); $("camVideo").srcObject = camStream; }
+  catch { showMsg($("camErr"), "cam_err"); }
 }
-function closeCamera() {
-  camStream?.getTracks().forEach((t) => t.stop()); camStream = null;
-  $("camVideo").srcObject = null; if ($("camDlg").open) $("camDlg").close();
-}
-$("camClose").addEventListener("click", closeCamera);
-$("camDlg").addEventListener("close", () => { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; });
-$("camShot").addEventListener("click", () => {
+function stopCam() { camStream?.getTracks().forEach((x) => x.stop()); camStream = null; $("camVideo").srcObject = null; }
+$("camClose").addEventListener("click", () => { stopCam(); $("camDlg").close(); });
+$("camDlg").addEventListener("close", stopCam);
+$("camShot").addEventListener("click", async () => {
   const v = $("camVideo"); if (!v.videoWidth) return;
-  const k = Math.min(1, 1024 / Math.max(v.videoWidth, v.videoHeight));
-  const c = document.createElement("canvas"); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
-  c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-  setPhoto(camEye, c.toDataURL("image/jpeg", 0.85)); closeCamera();
+  const eye = camEye; const p = await processSource(v, v.videoWidth, v.videoHeight);
+  setPhoto(eye, p); stopCam(); $("camDlg").close();
 });
+$("p1next").addEventListener("click", () => { state.q = 0; setStep(2); renderQuestion(); });
 
-// ---------- messages ----------
-function showMsg(t, info) { const m = $("scanMsg"); m.textContent = t; m.className = "msg" + (info ? " info" : ""); m.hidden = !t; }
-
-// ---------- AI ----------
-function buildPrompt(symptoms, eyes) {
-  return [
-    "You are an AI assistant giving PRELIMINARY, non-diagnostic eye screening information. You are not a doctor.",
-    "Look at the provided eye photo(s) (labelled left/right) and the optional symptom text.",
-    "Never state a diagnosis. Use cautious wording like 'possible signs'. Do not claim accuracy.",
-    "External photos cannot show the retina: for diabetic retinopathy, glaucoma and macular degeneration use level \"not_assessable\" unless the symptoms text clearly suggests a concern, in which case use \"possible\".",
-    "If an image is not an eye or is too poor, say so in image_quality.",
-    "Reply with ONLY compact JSON, no markdown, in this shape:",
-    '{"urgency":"routine|soon|urgent","image_quality":"good|fair|poor|not_an_eye|no_image","summary":"1-2 sentences",',
-    '"screening":[{"condition":"Cataract","level":"low|possible|elevated|not_assessable","note":"short"},{"condition":"Glaucoma",...},{"condition":"Diabetic retinopathy",...},{"condition":"Age-related macular degeneration",...}],',
-    '"eyes":{"left":{"observations":["..."],"areas_of_interest":["..."]},"right":{"observations":["..."],"areas_of_interest":["..."]}},',
-    '"next_steps":["..."]}',
-    "Include only eyes that were provided. Keep each string under 140 characters.",
-    (lang === "ar" ? "Write all string values in Arabic (Modern Standard, simple). Keep the JSON keys and the level/urgency/image_quality enum values in English." : "Write in English."),
-    "Symptoms: " + (symptoms || "none given") + ".",
-    "Photos provided: " + (eyes.length ? eyes.join(", ") : "none") + ".",
-  ].join("\n");
+// ---------- urgent banner (deterministic rules, never AI) ----------
+function currentTriage() { return runTriage(state.answers, state.answers.text); }
+function showTriage(tr) {
+  const box = $("urgent");
+  if (!tr || (tr.level !== "emergency" && tr.level !== "urgent")) { box.hidden = true; return; }
+  box.hidden = false; box.dataset.level = tr.level;
+  $("urgentTitle").textContent = t("urg_" + tr.level + "_t");
+  $("urgentBody").textContent = t("urg_" + tr.level + "_d");
+  const ul = $("urgentWhy"); ul.replaceChildren();
+  tr.reasons.filter((r) => r.level === "emergency" || r.level === "urgent").forEach((r) => ul.append(el("li", null, t("why_" + r.id))));
 }
-function parts(symptoms) {
-  const eyes = Object.keys(photos).filter((k) => photos[k]);
-  const p = [buildPrompt(symptoms, eyes)];
-  for (const e of eyes) {
-    p.push(e + " eye photo:");
-    p.push({ inlineData: { mimeType: "image/jpeg", data: photos[e].split(",")[1] } });
+
+// ---------- symptom wizard ----------
+const TOTAL = QUESTIONS.length + 1;
+function renderQuestion() {
+  const i = state.q, isText = i >= QUESTIONS.length;
+  $("qCount").textContent = t("q_of", { n: i + 1, total: TOTAL });
+  $("qBar").style.width = ((i + 1) / TOTAL) * 100 + "%";
+  $("qBack").disabled = false; $("qErr").hidden = true;
+  const opts = $("qOpts"); opts.replaceChildren();
+  $("qTextWrap").hidden = !isText; opts.hidden = isText;
+  $("qNext").textContent = t(isText ? "btn_next" : "btn_next");
+  if (isText) {
+    $("qLegend").textContent = t("q_text_label");
+    const ta = $("qText"); ta.value = state.answers.text || ""; updateCount();
+    return;
   }
-  return p;
+  const q = QUESTIONS[i]; $("qLegend").textContent = t("q_" + q.id);
+  q.options.forEach((o, k) => {
+    const id = `q_${q.id}_${o}`; const lab = el("label", "opt");
+    const inp = el("input"); inp.type = q.type === "multi" ? "checkbox" : "radio"; inp.name = q.id; inp.value = o; inp.id = id;
+    const cur = state.answers[q.id]; inp.checked = q.type === "multi" ? (cur || []).includes(o) : cur === o;
+    inp.addEventListener("change", () => onAnswer(q, inp));
+    lab.append(inp, el("span", null, t(`qo_${q.id}_${o}`))); opts.append(lab);
+  });
+  opts.querySelector("input")?.focus({ preventScroll: true });
 }
-function parseJson(t) {
-  const s = t.indexOf("{"), e = t.lastIndexOf("}");
-  if (s < 0 || e < 0) throw new Error("The model did not return a readable result. Please try again.");
-  return JSON.parse(t.slice(s, e + 1));
+function onAnswer(q, inp) {
+  if (q.type === "multi") {
+    let cur = new Set(state.answers.history || []);
+    if (inp.checked) { if (inp.value === "none") cur = new Set(["none"]); else { cur.delete("none"); cur.add(inp.value); } } else cur.delete(inp.value);
+    state.answers.history = [...cur];
+    document.querySelectorAll("#qOpts input").forEach((x) => { x.checked = cur.has(x.value); });
+  } else state.answers[q.id] = inp.value;
+  $("qErr").hidden = true;
+  state.triage = currentTriage(); showTriage(state.triage);
 }
-async function runOnDevice(symptoms) {
-  await deviceOnlyModel.initializeDeviceModel?.((p) => showMsg("Downloading on-device model: " + Math.round(p * 100) + "%", true));
-  const r = await deviceOnlyModel.generateContent(parts(symptoms));
-  return { data: parseJson(r.response.text()), source: "on_device" };
-}
-async function runCloud(symptoms) {
-  const r = await cloudGen(parts(symptoms));
-  return { data: parseJson(r.response.text()), source: "in_cloud" };
-}
+function updateCount() { $("qTextCount").textContent = $("qText").value.length + " / " + MAX_TEXT; }
+$("qText").addEventListener("input", () => { state.answers.text = $("qText").value; updateCount(); state.triage = currentTriage(); showTriage(state.triage); });
+$("qNext").addEventListener("click", () => {
+  const i = state.q;
+  if (i < QUESTIONS.length) {
+    const q = QUESTIONS[i], v = state.answers[q.id];
+    if (q.required && (v == null || v === "")) { showMsg($("qErr"), "q_required"); return; }
+    if (q.id === "history" && !(v || []).length) { state.answers.history = ["none"]; }
+  } else if ($("qText").value.length > MAX_TEXT) { showMsg($("qErr"), "q_too_long"); return; }
+  if (i + 1 >= TOTAL) { renderReview(); setStep(3); return; }
+  state.q = i + 1; renderQuestion();
+});
+$("qBack").addEventListener("click", () => { if (state.q === 0) { setStep(1); return; } state.q--; renderQuestion(); });
 
-// ---------- flow ----------
-function setBusy(b) { $("analyze").disabled = b; }
-function showUrgent(on, why) {
-  $("urgent").hidden = !on;
-  if (on) { if (why) $("urgentWhy").textContent = why; $("urgent").classList.remove("reveal"); void $("urgent").offsetWidth; $("urgent").classList.add("reveal"); }
+// ---------- review ----------
+function labelFor(id, v) { return t(`qo_${id}_${v}`); }
+function renderReview() {
+  const a = state.answers, dl = $("reviewList"); dl.replaceChildren();
+  state.answers.history = (a.history && a.history.length) ? a.history : ["none"];
+  QUESTIONS.forEach((q, idx) => {
+    const v = a[q.id];
+    const dt = el("dt", null, t("q_" + q.id));
+    const dd = el("dd"); dd.append(el("span", null, q.type === "multi" ? (v || []).map((x) => labelFor(q.id, x)).join(", ") : v ? labelFor(q.id, v) : "-"));
+    const b = el("button", "btn btn-link", t("q_edit")); b.type = "button"; b.addEventListener("click", () => { state.q = idx; setStep(2); renderQuestion(); }); dd.append(b);
+    dl.append(dt, dd);
+  });
+  if (a.text) { dl.append(el("dt", null, t("q_text_label"))); const dd = el("dd"); dd.append(el("span", null, sanitizeText(a.text))); const b = el("button", "btn btn-link", t("q_edit")); b.type = "button"; b.addEventListener("click", () => { state.q = QUESTIONS.length; setStep(2); renderQuestion(); }); dd.append(b); dl.append(dd); }
+  const ph = $("reviewPhotos"); ph.replaceChildren();
+  for (const e of ["right", "left"]) { const p = state.photos[e]; if (!p) continue; const f = el("figure"); const i = el("img"); i.src = p.dataUrl; i.alt = t("eye_" + e); f.append(i, el("figcaption", null, t("eye_" + e) + ": " + t("iq_" + p.quality.overall))); ph.append(f); }
+  $("reviewNote").textContent = Object.values(state.photos).some(Boolean) ? "" : t("rep_no_photo");
+  state.triage = currentTriage(); showTriage(state.triage);
 }
-function hasInput() { return photos.left || photos.right || $("symptoms").value.trim(); }
+$("p3back").addEventListener("click", () => { state.q = TOTAL - 1; setStep(2); renderQuestion(); });
 
+// ---------- screening flow ----------
+const STAGES = ["pr_prepare", "pr_model", "pr_analyze", "pr_validate"];
+function renderProgress(active, extra) {
+  const ol = $("progress"); ol.replaceChildren();
+  STAGES.forEach((k, i) => { const li = el("li", i < active ? "done" : i === active ? "on" : "", t(k)); if (i === active && extra) li.append(el("small", null, " " + extra)); ol.append(li); });
+}
+function inputParts() {
+  const summary = buildSummary(state.answers);
+  const eyes = ["right", "left"].filter((e) => state.photos[e]);
+  const quality = Object.fromEntries(eyes.map((e) => [e, state.photos[e].quality]));
+  const parts = [buildPrompt({ summary, eyes, lang: getLang(), quality })];
+  for (const e of eyes) { parts.push(e + " eye photo:"); parts.push({ inlineData: { mimeType: "image/jpeg", data: state.photos[e].dataUrl.split(",")[1] } }); }
+  return { summary, eyes, quality, parts };
+}
 $("analyze").addEventListener("click", async () => {
-  const symptoms = $("symptoms").value.trim();
-  if (!hasInput()) { showMsg("Add at least one eye photo or describe your symptoms."); return; }
-  $("cloudPreview").hidden = true; showMsg("");
-  showUrgent(RED_FLAGS.test(symptoms));
-  setBusy(true);
-  setScan(true);
+  if (state.busy) return;
+  const v = validate(state.answers);
+  if (!v.ok && !Object.values(state.photos).some(Boolean)) { showMsg($("scanMsg"), "err_nothing"); return; }
+  showMsg($("scanMsg"), "");
+  state.busy = true; $("analyze").disabled = true;
+  const input = inputParts(); state.input = input; state.triage = currentTriage(); showTriage(state.triage);
+  setStep(4); $("cloudPreview").hidden = true; showMsg($("runMsg"), ""); $("p4back").hidden = true;
+  renderProgress(0);
+  document.querySelectorAll(".drop.has").forEach((d) => d.classList.add("scanning"));
   try {
-    if (nanoState === "unavailable") { offerCloud("Gemini Nano is not available in this browser, so nothing was analyzed. Nothing has been sent anywhere."); return; }
-    showMsg("Analyzing on your device...", true);
-    const res = await runOnDevice(symptoms);
-    showMsg(""); render(res, symptoms);
+    renderProgress(1);
+    const res = await runScreening({ input, engines, onProgress: (p) => { renderProgress(1, t("dl_model", { pct: Math.round(p * 100) })); } });
+    renderProgress(2); await finish(res);
   } catch (e) {
-    console.warn(e);
-    offerCloud("On-device analysis failed (" + (e.message || "error") + "). Nothing was sent anywhere.");
-  } finally { setBusy(false); setScan(false); }
+    if (e instanceof AiError && (e.code === "nano_unavailable" || e.code === "nano_failed")) offerCloud(e.code === "nano_unavailable" ? t("cloud_why_unavail") : t("cloud_why_failed", { err: e.message }));
+    else handleAiError(e);
+  } finally { state.busy = false; $("analyze").disabled = false; document.querySelectorAll(".drop.has").forEach((d) => d.classList.remove("scanning")); }
 });
-function setScan(on) { document.querySelectorAll(".drop.has").forEach((d) => d.classList.toggle("scanning", on)); }
+function handleAiError(e) {
+  console.warn(e);
+  const key = e instanceof AiError && e.code === "invalid_json" ? "err_invalid_json" : e instanceof AiError && e.code === "invalid_schema" ? "err_invalid_schema" : null;
+  showMsg($("runMsg"), key || "err_generic", { err: e.message }); $("p4back").hidden = false;
+}
+async function finish({ source, model, raw }) {
+  renderProgress(3);
+  let report;
+  try { report = validateReport(raw, { eyes: state.input.eyes, triageLevel: state.triage.level, appQuality: state.input.quality }); }
+  catch (e) { handleAiError(e); return; }
+  renderProgress(4);
+  state.ctx = { at: new Date().toISOString(), summary: state.input.summary, report, triage: state.triage, source, model, thumbs: {} };
+  for (const e of state.input.eyes) state.ctx.thumbs[e] = state.photos[e].dataUrl;
+  let thumb = null; const first = state.input.eyes[0]; if (first) thumb = await makeThumb(state.photos[first].dataUrl);
+  history.add({ at: state.ctx.at, summary: state.ctx.summary, report, triageIds: state.triage.reasons.map((r) => ({ id: r.id, level: r.level })), source, model, thumb });
+  renderReport(); renderHistory(); for (let i = 1; i <= 4; i++) $("p" + i).hidden = true;
+  document.querySelectorAll("#stepper li").forEach((li) => li.classList.add("done"));
+  $("report").hidden = false; $("report").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function makeThumb(url) {
+  return new Promise((r) => { const i = new Image(); i.onload = () => { const c = document.createElement("canvas"); c.width = 96; c.height = 72; c.getContext("2d").drawImage(i, 0, 0, 96, 72); r(c.toDataURL("image/jpeg", 0.6)); }; i.onerror = () => r(null); i.src = url; });
+}
 
+// ---------- cloud consent (never automatic) ----------
+function logSend(what, model) { state.cloudLog.push({ at: new Date(), what, model }); renderLog(); }
 function offerCloud(why) {
-  showMsg("");
-  const symptoms = $("symptoms").value.trim();
-  $("cloudWhy").textContent = why + " You can optionally send the following to cloud Gemini through Firebase AI Logic. Nothing else is sent.";
+  const { summary, eyes } = state.input;
+  $("cloudWhy").textContent = why;
   const th = $("cloudThumbs"); th.replaceChildren();
-  for (const e of ["left", "right"]) if (photos[e]) { const i = el("img"); i.src = photos[e]; i.alt = e + " eye"; th.append(i); }
-  $("cloudText").textContent = "Symptom text: " + (symptoms || "(none)") + "\nPhotos: " + (Object.keys(photos).filter((k) => photos[k]).join(", ") || "none");
-  $("cloudPreview").hidden = false;
+  for (const e of eyes) { const i = el("img"); i.src = state.photos[e].dataUrl; i.alt = t("eye_" + e); th.append(i); }
+  $("cloudText").textContent = summaryToText(summary) + "\n\n" + t("cloud_photos") + ": " + (eyes.length ? eyes.map((e) => t("eye_" + e)).join(", ") : t("cloud_none")) + "\n" + t("cloud_instr");
+  $("cloudAck").checked = false; $("cloudSend").disabled = true; $("cloudPreview").hidden = false; $("p4back").hidden = false;
+  $("cloudAck").onchange = () => { $("cloudSend").disabled = !$("cloudAck").checked; };
+  $("cloudCancel").onclick = () => { $("cloudPreview").hidden = true; showMsg($("runMsg"), "cancelled", null, true); };
   $("cloudSend").onclick = async () => {
-    $("cloudSend").disabled = true; showMsg("Sending to cloud Gemini...", true); setScan(true);
-    try { const res = await runCloud(symptoms); $("cloudPreview").hidden = true; showMsg(""); render(res, symptoms); }
-    catch (e) { showMsg("Cloud request failed: " + e.message); }
-    finally { $("cloudSend").disabled = false; setScan(false); }
+    if (!$("cloudAck").checked) return;
+    const consent = { granted: true, preview: true, at: Date.now() };
+    $("cloudSend").disabled = true; showMsg($("runMsg"), "running_cloud", null, true); renderProgress(2);
+    document.querySelectorAll(".drop.has").forEach((d) => d.classList.add("scanning"));
+    try {
+      logSend((eyes.length ? t("log_photos", { n: eyes.length }) + ", " : "") + t("log_answers"), "Gemini");
+      const res = await runCloudWithConsent({ input: state.input, engines, consent });
+      $("cloudPreview").hidden = true; showMsg($("runMsg"), ""); await finish(res);
+    } catch (e) { if (e instanceof AiError) handleAiError(e); else showMsg($("runMsg"), "err_cloud", { err: e.message }); }
+    finally { document.querySelectorAll(".drop.has").forEach((d) => d.classList.remove("scanning")); }
   };
-  $("cloudCancel").onclick = () => { $("cloudPreview").hidden = true; showMsg("Cancelled. Nothing was sent.", true); };
 }
+$("p4back").addEventListener("click", () => { $("cloudPreview").hidden = true; setStep(3); });
 
-// ---------- render ----------
-function gauge(u) {
-  const pct = u === "urgent" ? 100 : u === "soon" ? 62 : 28, col = u === "urgent" ? "#c62828" : u === "soon" ? "#f57f17" : "#2e7d32";
-  const w = el("div", "gauge");
-  w.innerHTML = '<svg viewBox="0 0 80 80"><circle class="g0" cx="40" cy="40" r="34"/><circle class="g1" cx="40" cy="40" r="34"/></svg>';
-  const g1 = w.querySelector(".g1"); g1.style.stroke = col;
-  requestAnimationFrame(() => requestAnimationFrame(() => (g1.style.strokeDashoffset = 213.6 * (1 - pct / 100))));
-  w.append(el("b", null, u === "urgent" ? "!!" : u === "soon" ? "!" : "✓"));
-  return w;
-}
-const LV = { low: ["Low signs", "lvl-low", 18, "#2e7d32"], possible: ["Possible signs", "lvl-possible", 55, "#f57f17"], elevated: ["Elevated signs", "lvl-elevated", 85, "#c62828"], not_assessable: ["Not assessable from photo", "lvl-na", 0, "#90a4ae"] };
-const UR = { routine: ["u-routine", "✓", "Routine follow-up", "Nothing urgent stood out. Consider a routine eye exam."], soon: ["u-soon", "!", "See an eye doctor soon", "Some signs are worth checking. Book an appointment in the coming days."], urgent: ["u-urgent", "!!", "Seek care promptly", "Some signs may need prompt attention. Please see a doctor today."] };
-
-function render({ data, source }, symptoms, fromHistory) {
-  lastReport = { data, source, symptoms, at: new Date().toISOString(), thumbs: {} };
-  const d = data;
-  const ur = UR[d.urgency] || UR.routine;
-  if (!fromHistory && d.urgency === "urgent") showUrgent(true, "The screening flagged signs that may need prompt attention.");
-  const eb = $("engineBadge");
-  eb.className = "badge " + (source === "on_device" ? "badge-device" : "badge-cloud");
-  eb.textContent = source === "on_device" ? "Analyzed on-device (Gemini Nano)" : "Analyzed in cloud (Gemini)";
-  $("reportMeta").textContent = new Date().toLocaleString() + " · Photo quality: " + (d.image_quality || "unknown").replace(/_/g, " ");
-  const o = $("overall"); o.className = "overall " + ur[0]; o.replaceChildren(gauge(d.urgency), (() => { const w = el("div"); w.append(el("h3", null, ur[2]), el("p", null, d.summary || ur[3])); return w; })());
-  const cards = $("cards"); cards.replaceChildren();
-  const list = Array.isArray(d.screening) ? d.screening : [];
-  CONDITIONS.forEach((name, i) => {
-    const s = list.find((x) => x && String(x.condition).toLowerCase().startsWith(name.toLowerCase().slice(0, 6))) || list[i] || {};
-    const lv = LV[s.level] || LV.not_assessable;
-    const c = el("div", "cond"); c.style.animationDelay = i * 80 + "ms";
-    const h = el("div", "cond-h"); h.append(el("b", null, name), el("span", "lvl " + lv[1], lv[0]));
-    const bar = el("div", "bar"); const f = el("i"); f.style.background = lv[3]; f.style.width = "0%"; bar.append(f);
-    requestAnimationFrame(() => requestAnimationFrame(() => (f.style.width = lv[2] + "%")));
-    c.append(h, bar, el("p", null, s.note || "No details returned."));
-    cards.append(c);
-  });
+// ---------- report ----------
+const U_ICON = { routine: "✓", soon: "!", urgent: "!!", emergency: "⚠" };
+function renderReport() {
+  const c = state.ctx; if (!c) return;
+  const r = c.report;
+  const eb = $("engineBadge"); eb.className = "badge " + (c.source === "on_device" ? "badge-device" : "badge-cloud");
+  eb.textContent = t(c.source === "on_device" ? "eng_badge_device" : "eng_badge_cloud") + (c.source === "on_device" ? "" : " · " + c.model);
+  $("reportMeta").textContent = new Date(c.at).toLocaleString(getLang() === "ar" ? "ar-EG" : undefined);
+  const o = $("overall"); o.className = "overall u-" + r.urgency; o.replaceChildren();
+  const ic = el("div", "u-ic", U_ICON[r.urgency]); ic.setAttribute("aria-hidden", "true");
+  const body = el("div"); body.append(el("h3", null, t("urg_" + r.urgency + "_t")), el("p", null, t("urg_" + r.urgency + "_d")));
+  const why = c.triage.reasons.filter((x) => x.level !== "routine");
+  if (why.length) { const ul = el("ul", "why"); why.forEach((x) => ul.append(el("li", null, t("why_" + x.id)))); body.append(el("small", null, t("rep_safety_why")), ul); }
+  body.append(el("small", "muted", t("rep_urgency_src")));
+  if (r.reassurance_blocked) body.append(el("p", "warnline", t("rep_reassure_blocked")));
+  o.append(ic, body);
+  // quality
+  const qb = $("qualityBox"); qb.replaceChildren();
+  const ai = el("p"); ai.append(el("b", null, t("iq_ai") + ": "), document.createTextNode(t("iq_" + r.image_quality.overall))); qb.append(ai);
+  r.image_quality.issues.forEach((x) => qb.append(el("p", "small", x)));
+  for (const e of Object.keys(c.thumbs)) { /* app-side quality was stored with the photos only in this run */ }
+  if (state.input && c === state.ctx && state.input.quality) for (const [e, q] of Object.entries(state.input.quality)) qb.append(el("p", "small", t("iq_app") + " (" + t("eye_" + e) + "): " + t("iq_" + q.overall)));
+  // symptoms
+  const sb = $("symBox"); sb.replaceChildren();
+  if (r.symptom_summary) sb.append(el("p", null, r.symptom_summary));
+  const ul = el("ul", "kv"); const s = c.summary;
+  [["eye", labelFor("eye", s.eye)], ["onset", labelFor("onset", s.onset)], ["pain", labelFor("pain", s.pain)], ["redness", labelFor("redness", s.redness)], ["blur", labelFor("blur", s.blur)], ["light", labelFor("light", s.light)], ["flashes", labelFor("flashes", s.flashes)], ["suddenLoss", labelFor("suddenLoss", s.suddenLoss)], ["injury", labelFor("injury", s.injury)], ["history", (s.history || []).map((h) => labelFor("history", h)).join(", ")], ["diabetes", labelFor("diabetes", s.diabetes)]]
+    .forEach(([k, v]) => { const li = el("li"); li.append(el("span", "k", t("q_" + k)), el("b", null, v)); ul.append(li); });
+  sb.append(ul); if (s.text) sb.append(el("p", "small", t("q_text_label") + ": " + s.text));
+  // eyes
   const cmp = $("eyesCmp"); cmp.replaceChildren();
-  for (const e of ["left", "right"]) {
-    const info = d.eyes && d.eyes[e]; if (!info && !photos[e]) continue;
-    const b = el("div", "eyebox"); b.append(el("h4", null, e[0].toUpperCase() + e.slice(1) + " eye"));
-    if (photos[e]) { const i = el("img"); i.src = photos[e]; i.alt = e + " eye"; b.append(i); lastReport.thumbs[e] = photos[e]; }
-    const ul = el("ul");
-    [...(info?.observations || []), ...(info?.areas_of_interest || []).map((x) => "Area of interest: " + x)].forEach((t) => ul.append(el("li", null, String(t))));
-    if (!ul.children.length) ul.append(el("li", null, "No observations returned."));
-    b.append(ul); cmp.append(b);
+  for (const e of ["right", "left"]) {
+    const b = el("div", "eyebox"); b.append(el("h5", null, t("eye_" + e)));
+    const img = c.thumbs[e] || c.thumbStored; if (c.thumbs[e]) { const i = el("img"); i.src = c.thumbs[e]; i.alt = t("eye_" + e); b.append(i); }
+    if (r.observations[e]) {
+      b.append(el("span", "tag", t("ai_obs")));
+      const ul2 = el("ul"); (r.observations[e].length ? r.observations[e] : [t("rep_no_obs")]).forEach((x) => ul2.append(el("li", null, x))); b.append(ul2);
+    } else b.append(el("p", "muted small", t("rep_no_photo")));
+    cmp.append(b);
   }
-  const st = $("steps"); st.replaceChildren(el("h4", null, "Suggested next steps"));
-  const ul = el("ul"); (d.next_steps?.length ? d.next_steps : [ur[3]]).forEach((t) => ul.append(el("li", null, String(t)))); st.append(ul);
-  $("explainOut").hidden = true;
-  $("report").hidden = false; $("report").classList.remove("reveal"); void $("report").offsetWidth; $("report").classList.add("reveal");
-  if (!fromHistory) addHistory();
-  $("report").scrollIntoView({ behavior: "smooth", block: "start" });
+  // assessability: fixed by the app
+  const tb = $("assessTbl").querySelector("tbody"); tb.replaceChildren();
+  for (const k of [...NOT_ASSESSABLE, "cataract"]) { const tr = el("tr"); tr.append(el("td", null, t("na_" + k)), el("td", k === "cataract" ? "st-lim" : "st-na", t(k === "cataract" ? "na_cataract_status" : "na_status"))); tb.append(tr); }
+  const st = $("steps"); st.replaceChildren(el("h4", null, t("rep_steps"))); const u1 = el("ul"); r.next_steps.forEach((x) => u1.append(el("li", null, x)));
+  if (!r.next_steps.length) u1.append(el("li", null, t("urg_" + r.urgency + "_d"))); st.append(u1);
+  const lm = $("limits"); lm.replaceChildren(el("h4", null, t("rep_limits"))); const u2 = el("ul"); r.limitations.forEach((x) => u2.append(el("li", null, x))); if (r.uncertainty) u2.append(el("li", null, r.uncertainty)); lm.append(u2);
+  if (r.missing.length) lm.append(el("p", "muted small", t("rep_missing", { list: r.missing.join(", ") })));
+  $("docOut").hidden = true; $("explainOut").hidden = true;
+}
+$("print").addEventListener("click", () => window.print());
+$("again").addEventListener("click", () => resetFlow());
+$("docSum").addEventListener("click", () => {
+  const c = state.ctx; if (!c) return;
+  const box = $("docOut"); box.hidden = !box.hidden; if (box.hidden) return;
+  box.textContent = doctorSummary({ t, when: new Date(c.at).toLocaleString(), summary: c.summary, report: c.report, triage: c.triage, source: c.source, model: c.model, label: labelFor });
+  box.dir = getLang() === "ar" ? "rtl" : "ltr";
+  navigator.clipboard?.writeText(box.textContent).then(() => { $("docSum").textContent = t("copied"); setTimeout(() => ($("docSum").textContent = t("btn_doc")), 1500); }).catch(() => {});
+});
+$("explain").addEventListener("click", async () => {
+  const c = state.ctx; if (!c) return;
+  if (!confirm(t("expl_confirm"))) return;
+  const out = $("explainOut"); out.hidden = false; out.className = "out loading"; out.textContent = t("expl_asking");
+  try {
+    const sum = [c.report.symptom_summary, c.report.urgency, c.report.limitations.join(" ")].filter(Boolean).join(" | ");
+    logSend(t("log_text_only"), "Gemini");
+    const res = await engines.runCloudText(t("expl_prompt") + "\n\n" + sum);
+    out.className = "out"; out.textContent = res.text;
+  } catch (e) { out.className = "out err"; out.textContent = t("err_cloud", { err: e.message }); }
+});
+function resetFlow() {
+  state.photos = { left: null, right: null }; state.answers = { history: [], text: "" }; state.q = 0; state.triage = null; state.ctx = null;
+  setPhoto("left", null); setPhoto("right", null); $("report").hidden = true; showTriage(null); setStep(1);
 }
 
-// ---------- history (sessionStorage, thumbnails only) ----------
-function loadHist() { try { return JSON.parse(sessionStorage.getItem("hist") || "[]"); } catch { return []; } }
-function thumb(url) {
-  return new Promise((r) => { const i = new Image(); i.onload = () => { const c = document.createElement("canvas"); c.width = 112; c.height = 84; c.getContext("2d").drawImage(i, 0, 0, 112, 84); r(c.toDataURL("image/jpeg", 0.6)); }; i.onerror = () => r(null); i.src = url; });
-}
-async function addHistory() {
-  const r = lastReport; const t = photos.left || photos.right;
-  const entry = { at: r.at, source: r.source, data: r.data, symptoms: r.symptoms, thumb: t ? await thumb(t) : null };
-  const h = loadHist(); h.unshift(entry);
-  try { sessionStorage.setItem("hist", JSON.stringify(h.slice(0, 10))); } catch {}
-  renderHist();
-}
-function renderHist() {
-  const h = loadHist(), list = $("histList"); list.replaceChildren();
-  $("clearHist").hidden = !h.length;
-  if (!h.length) { list.append(el("p", "muted", "No scans yet.")); return; }
+// ---------- history / timeline ----------
+function renderHistory() {
+  const h = history.list(), list = $("histList"); list.replaceChildren();
+  $("clearHist").hidden = !h.length; $("histMode").textContent = t(history.isPersistent() ? "hist_mode_dev" : "hist_mode_tab");
+  $("persistToggle").checked = history.isPersistent();
+  $("cmpBox").hidden = true;
+  if (!h.length) { list.append(el("li", "muted", t("hist_empty"))); return; }
   h.forEach((e, idx) => {
-    const row = el("div", "hi");
-    if (e.thumb) { const i = el("img"); i.src = e.thumb; i.alt = ""; row.append(i); } else row.append(el("img"));
-    const t = el("div", "t"); t.append(el("b", null, new Date(e.at).toLocaleString()), el("small", null, (UR[e.data.urgency] || UR.routine)[2] + " · " + (e.source === "on_device" ? "On-device" : "Cloud")));
-    const open = el("button", "btn btn-ghost", "Open"); open.type = "button";
-    open.onclick = () => { render({ data: e.data, source: e.source }, e.symptoms, true); };
-    const del = el("button", "btn btn-link", "Delete"); del.type = "button";
-    del.onclick = () => { const x = loadHist(); x.splice(idx, 1); sessionStorage.setItem("hist", JSON.stringify(x)); renderHist(); };
-    row.append(t, open, del); list.append(row);
+    const li = el("li", "tl u-" + e.report.urgency);
+    li.append(el("span", "dot"));
+    if (e.thumb) { const i = el("img"); i.src = e.thumb; i.alt = ""; li.append(i); }
+    const tx = el("div", "t"); tx.append(el("b", null, new Date(e.at).toLocaleString(getLang() === "ar" ? "ar-EG" : undefined)), el("small", null, t("urg_" + e.report.urgency) + " · " + t(e.source === "on_device" ? "eng_device" : "eng_cloud")), el("small", "muted", e.report.symptom_summary || ""));
+    const acts = el("div", "acts");
+    const open = el("button", "btn btn-ghost", t("hist_open")); open.type = "button";
+    open.addEventListener("click", () => { state.ctx = { at: e.at, summary: e.summary, report: e.report, triage: { level: e.report.urgency, reasons: e.triageIds || [] }, source: e.source, model: e.model, thumbs: {} }; state.input = null; renderReport(); $("report").hidden = false; $("report").scrollIntoView({ behavior: "smooth" }); });
+    acts.append(open);
+    if (h[idx + 1]) { const cb = el("button", "btn btn-ghost", t("hist_compare")); cb.type = "button"; cb.setAttribute("aria-label", t("hist_compare_with")); cb.addEventListener("click", () => showCompare(e, h[idx + 1])); acts.append(cb); }
+    const del = el("button", "btn btn-link", t("hist_delete")); del.type = "button"; del.addEventListener("click", () => { history.remove(e.id); renderHistory(); renderPrivacy(); });
+    acts.append(del); li.append(tx, acts); list.append(li);
   });
 }
-$("clearHist").addEventListener("click", () => { sessionStorage.removeItem("hist"); renderHist(); });
-renderHist();
+function cmpVal(key, v) {
+  if (v == null) return "-";
+  if (key === "urgency") return t("urg_" + v); if (key === "quality") return t("iq_" + v);
+  if (Array.isArray(v)) return v.map((x) => labelFor(key, x)).join(", ");
+  return labelFor(key, v);
+}
+function showCompare(a, b) {
+  const box = $("cmpBox"); box.hidden = false; box.replaceChildren(el("h4", null, t("cmp_h")));
+  const tbl = el("table", "tbl"); const th = el("thead"); const hr = el("tr");
+  ["cmp_item", "cmp_a", "cmp_b", "cmp_diff"].forEach((k) => { const c = el("th", null, k === "cmp_diff" ? "" : t(k)); c.scope = "col"; hr.append(c); }); th.append(hr); tbl.append(th);
+  const tbd = el("tbody");
+  for (const r of compare(a, b)) { const tr = el("tr", r.same ? "" : "diff"); const lab = r.key === "urgency" ? t("cmp_urgency") : r.key === "quality" ? t("cmp_quality") : t("q_" + r.key); tr.append(el("td", null, lab), el("td", null, cmpVal(r.key, r.a)), el("td", null, cmpVal(r.key, r.b)), el("td", null, r.same ? t("cmp_same") : t("cmp_diff"))); tbd.append(tr); }
+  tbl.append(tbd); box.append(tbl, el("p", "muted small", t("hist_note")));
+  const x = el("button", "btn btn-link", t("cmp_close")); x.type = "button"; x.addEventListener("click", () => (box.hidden = true)); box.append(x);
+  box.scrollIntoView({ block: "nearest" });
+}
+$("clearHist").addEventListener("click", () => { history.clear(); renderHistory(); renderPrivacy(); });
+$("persistToggle").addEventListener("change", (e) => { history.setPersistent(e.target.checked); renderHistory(); renderPrivacy(); });
 
-// ---------- print + cloud text-only explanation ----------
-$("print").addEventListener("click", () => window.print());
-$("explain").addEventListener("click", async () => {
-  if (!lastReport) return;
-  const out = $("explainOut"); out.hidden = false; out.className = "out loading";
-  if (!confirm("Send only the text summary of this report (no photos, no symptom text) to cloud Gemini?")) { out.hidden = true; return; }
-  out.textContent = "Asking cloud Gemini";
-  try {
-    const sum = (lastReport.data.summary || "") + " " + (lastReport.data.screening || []).map((s) => s.condition + ": " + s.level).join("; ");
-    const r = await cloudGen("Explain this preliminary eye screening result in plain, calm language for a patient. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.\n\n" + sum);
-    out.className = "out"; out.textContent = r.response.text();
-  } catch (e) { out.className = "out err"; out.textContent = "Cloud request failed: " + e.message; }
+// ---------- privacy center ----------
+function renderPrivacy() { $("privStore").textContent = t(history.isPersistent() ? "priv_store_dev" : "priv_store_tab"); renderLog(); }
+function renderLog() {
+  const ol = $("sendLog"); ol.replaceChildren();
+  if (!state.cloudLog.length) { ol.append(el("li", "muted", t("log_none"))); return; }
+  state.cloudLog.forEach((e) => ol.append(el("li", null, t("log_at", { time: e.at.toLocaleTimeString(), what: e.what, model: e.model }))));
+}
+$("delAll").addEventListener("click", () => {
+  history.clear(); localStorage.removeItem("eyecheck.persist.consent"); localStorage.removeItem("theme"); localStorage.removeItem("lang"); sessionStorage.clear();
+  renderHistory(); renderPrivacy(); $("delMsg").textContent = t("priv_deleted");
 });
 
-// ---------- reminders (local only, no AI) ----------
+// ---------- reminder (local only) ----------
 let remindTimer = null;
 $("remind").addEventListener("click", async () => {
   const msg = $("remindMsg"); msg.hidden = false;
-  if (remindTimer) { clearInterval(remindTimer); remindTimer = null; msg.textContent = lang === "ar" ? "تم إيقاف التذكير." : "Reminder stopped."; return; }
+  if (remindTimer) { clearInterval(remindTimer); remindTimer = null; msg.textContent = t("remind_off"); return; }
   try { if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission(); } catch {}
-  remindTimer = setInterval(() => {
-    const t = lang === "ar" ? "استراحة للعين: انظر لشيء بعيد 20 ثانية" : "Eye break: look at something 20 feet away for 20 seconds";
-    if ("Notification" in window && Notification.permission === "granted") new Notification("EyeCheck", { body: t }); else alert(t);
-  }, 20 * 60 * 1000);
-  msg.textContent = lang === "ar" ? "التذكير يعمل طالما هذه الصفحة مفتوحة. اضغط مرة أخرى للإيقاف." : "Reminder runs while this page stays open. Click again to stop.";
+  remindTimer = setInterval(() => { const m = t("remind_text"); if ("Notification" in window && Notification.permission === "granted") new Notification("EyeCheck", { body: m }); else alert(m); }, 20 * 60 * 1000);
+  msg.textContent = t("remind_on");
 });
 
-// ---------- Arabic / English ----------
-const AR = {
-  "nav-scan": ["a[href='#scan']", "فحص"], "nav-hist": ["a[href='#history']", "السجل"], "nav-about": ["a[href='#about']", "حول"],
-  eyebrow: [".eyebrow", "فحص أولي للعين بمساعدة الذكاء الاصطناعي"],
-  lead: [".hero .lead", "أضف صور العين ووصف الأعراض. يحللها Gemini Nano على جهازك. لا يُستخدم Gemini السحابي إلا بموافقتك الصريحة."],
-  s1: [".step:nth-of-type(1) b", "أضف الصور"], s2: [".flow .step:nth-child(3) b", "فحص على الجهاز"], s3: [".flow .step:nth-child(5) b", "التقرير"],
-  notice: [".notice p", "فحص أولي وليس تشخيصاً طبياً. قد يخطئ الذكاء الاصطناعي، ولا تغني صورة الهاتف عن فحص العين. النتائج مجرد علامات محتملة. راجع طبيب عيون عند أي قلق."],
-  h1s: ["#scan .card-h h2", "١. صور العين"], left: [".slot[data-eye=left] .slot-h", "العين اليسرى"], right: [".slot[data-eye=right] .slot-h", "العين اليمنى"],
-  sym: ["#scan h2.sec:nth-of-type(1)", null], ph: ["#symptoms", null],
-  analyze: ["#analyze span", "ابدأ الفحص"], priv: ["#privacyNote", "يعمل الفحص على جهازك بواسطة Gemini Nano. إن لم يدعمه متصفحك فلن يُرسل شيء. سترى بالضبط ما سيُرسل إلى Gemini السحابي ويمكنك الإرسال أو الإلغاء."],
-  rep: ["#report .card-h h2", "تقرير الفحص"], print: ["#print", "طباعة / حفظ PDF"], explain: ["#explain", "شرح مبسط (سحابي، نص فقط)"],
-  disc: [".disc", "فحص أولي بمساعدة الذكاء الاصطناعي فقط. ليس تشخيصاً طبياً ولم يتم التحقق منه سريرياً. راجع طبيب عيون عند أي قلق. في الطوارئ اتصل بالإسعاف."],
-  hist: ["#history .card-h h2", "سجل الجلسة"], clear: ["#clearHist", "مسح الكل"],
-  tipsT: ["[data-i=tipsT]", "نصائح للعناية بالعين"], docT: ["[data-i=docT]", "اختيار الطبيب المناسب"],
-  tip1: ["[data-i=tip1]", "قاعدة 20-20-20: كل 20 دقيقة انظر لشيء على بعد 6 أمتار لمدة 20 ثانية."], tip2: ["[data-i=tip2]", "رمش كثيراً وضع الشاشة أسفل مستوى العين قليلاً."],
-  tip3: ["[data-i=tip3]", "ارتدِ نظارة شمسية واقية من الأشعة فوق البنفسجية."], tip4: ["[data-i=tip4]", "لا تفرك عينيك. اغسل يديك قبل لمسهما أو لمس العدسات."],
-  tip5: ["[data-i=tip5]", "افحص عينيك بانتظام، وسنوياً إن كنت مصاباً بالسكري."], remindB: ["[data-i=remindB]", "ذكّرني كل 20 دقيقة"],
-  doc1: ["[data-i=doc1]", "أخصائي البصريات: فحص النظر والنظارات والفحص الروتيني."], doc2: ["[data-i=doc2]", "طبيب العيون: أمراض العين والجراحة والحالات العاجلة."],
-  doc3: ["[data-i=doc3]", "أحضر قائمة الأعراض والأدوية وأي تقارير سابقة."], doc4: ["[data-i=doc4]", "تغير مفاجئ في الرؤية أو ألم شديد أو إصابة: اذهب إلى الطوارئ."],
-  doc5: ["[data-i=doc5]", "ابحث في دليل الأطباء المحلي أو اسأل شركة التأمين."],
-};
-const EN = {};
-function applyLang() {
-  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-  $("lang").textContent = lang === "ar" ? "EN" : "عربي";
-  for (const [k, [sel, ar]] of Object.entries(AR)) {
-    const e = document.querySelector(sel); if (!e || ar == null) continue;
-    if (!(k in EN)) EN[k] = e.textContent;
-    e.textContent = lang === "ar" ? ar : EN[k];
-  }
-  const ta = $("symptoms");
-  if (!("ph" in EN)) EN.ph = ta.placeholder;
-  ta.placeholder = lang === "ar" ? "مثال: العين اليمنى حمراء وبها حكة منذ 3 أيام بدون ألم" : EN.ph;
+function renderAll() {
+  renderNano(); if (state.step === 2) renderQuestion(); if (state.step === 3) renderReview();
+  for (const e of ["right", "left"]) { renderQc(e); const p = state.photos[e]; if (p) slot(e).querySelector("img").alt = t("eye_" + e); }
+  if (state.triage) showTriage(state.triage);
+  if (state.ctx && !$("report").hidden) renderReport();
+  renderHistory(); renderPrivacy(); renderProgress(state.step === 4 ? 2 : 0);
 }
-$("lang").addEventListener("click", () => { lang = lang === "ar" ? "en" : "ar"; localStorage.setItem("lang", lang); applyLang(); });
-if (lang === "ar") applyLang();
+applyLang(localStorage.getItem("lang") || "en");
+setStep(1, false);
+checkNano();

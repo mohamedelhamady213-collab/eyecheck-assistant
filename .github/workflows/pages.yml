@@ -22,6 +22,7 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - run: npm test
       - run: npx vite build --base=/eyecheck-assistant/
         env:
           VITE_FIREBASE_API_KEY: AIzaSyCPdik9Knp4ISLgcYcwBEwuaitp8FILzxM
