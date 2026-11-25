@@ -45,7 +45,7 @@ async function withPage(opts, fn) { const c = await open(opts); try { await fn(c
 
 await test("page loads, English default, LTR, no console errors, no external requests", () => withPage({}, async ({ page, external }) => {
   ok((await page.$eval("html", (h) => h.dir)) === "ltr", "dir"); ok(external.length === 0, "external requests: " + external.join(","));
-  ok((await text(page, "#engineStatus")).includes("ready"), "nano badge");
+  ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "available", "nano badge: available, not claiming ready before init");
 }));
 await test("on-device happy path with two photos: report, badge, nothing sent to cloud, history saved tab-only", () => withPage({}, async ({ page, external }) => {
   await upload(page, "right", fx("sharp.jpg")); await upload(page, "left", fx("sharp.jpg"));
@@ -157,6 +157,80 @@ await test("reduced motion CSS and aria attributes present", () => withPage({}, 
   await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
   const a = await page.evaluate(() => getComputedStyle(document.querySelector(".iris")).animationName); ok(a === "none", "animation disabled: " + a);
   ok(!!(await page.$("[aria-current=step]")), "stepper aria-current"); ok(!!(await page.$("[role=alert]")), "alert regions");
+}));
+
+// ---------- second-round tests: Nano state, demo mode, retention, count, landing ----------
+await test("landing headline EN and AR, demo entry point present in both languages", () => withPage({}, async ({ page }) => {
+  ok((await text(page, "h1")) === "Your Eyes Deserve Smarter Care.", "EN h1"); ok((await text(page, ".tagline")).includes("Hybrid AI. Privacy First."), "EN sub");
+  ok((await page.$eval(".hero a[href='#demo']", (a) => a.textContent)) === "Explore Demo", "EN demo btn");
+  await click(page, "#lang"); await wait(200);
+  ok((await text(page, "h1")) === "رعاية أذكى تبدأ بفهم صحة عينيك.", "AR h1"); ok((await page.$eval(".hero a[href='#demo']", (a) => a.textContent)) === "استكشف العرض التجريبي", "AR demo btn");
+  ok((await page.$eval("html", (h) => h.dir)) === "rtl", "rtl");
+}));
+await test("Nano state: unavailable shows one consistent status and explanation, no auto cloud", () => withPage({ mock: { nano: "unavailable" } }, async ({ page }) => {
+  ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "unavailable", "state"); ok(await visible(page, "#engineHint"), "hint shown");
+  ok(!(await text(page, "#engineStatus")).toLowerCase().includes("ready"), "not ready");
+  await wizard(page); await runAnalyze(page); ok(await visible(page, "#cloudPreview"), "consent preview"); ok((await page.evaluate(() => (window.__sent || []).length)) === 0, "nothing sent");
+}));
+await test("Nano state: init failure shows init_failed, nothing sent; cancel keeps it that way; approve sends once", () => withPage({ mock: { deviceInitFails: true } }, async ({ page }) => {
+  await wizard(page); await runAnalyze(page);
+  ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "init_failed", "init_failed badge"); ok((await text(page, "#engineHint")).includes("Nothing was sent"), "hint");
+  ok(await visible(page, "#cloudPreview"), "preview"); await click(page, "#cloudCancel"); await wait(200); ok((await page.evaluate(() => (window.__sent || []).length)) === 0, "cancel sends nothing");
+  await runAnalyze(page); await click(page, "#cloudAck"); await click(page, "#cloudSend"); await wait(900);
+  ok((await page.evaluate(() => (window.__sent || []).length)) === 1, "approve sends exactly one request"); ok(await visible(page, "#report"), "report");
+}));
+await test("Nano state: request failure is shown as request_failed", () => withPage({ mock: { deviceFails: true } }, async ({ page }) => {
+  await wizard(page); await runAnalyze(page); ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "request_failed", "request_failed");
+}));
+await test("Nano state: ready only after a real run, and repeated runs start the model once", () => withPage({}, async ({ page }) => {
+  ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "available", "available before any run");
+  await wizard(page); await runAnalyze(page); ok((await page.$eval("#engineStatus", (e) => e.dataset.state)) === "ready", "ready after run");
+}));
+await test("question count: one source of truth across hero text, progress and review", () => withPage({}, async ({ page }) => {
+  ok((await text(page, "[data-i18n=how2_d]")).startsWith("11 short questions"), "how-it-works count");
+  await click(page, "#p1next"); ok((await text(page, "#qCount")) === "Question 1 of 12", "progress label: " + await text(page, "#qCount"));
+  ok((await page.$eval("#qBar", (e) => e.style.width)).startsWith("8.3"), "progress bar 1/12");
+  await click(page, "#qNext"); ok(await visible(page, "#qErr"), "required answer enforced"); ok((await text(page, "#qCount")) === "Question 1 of 12", "did not advance");
+  await click(page, "#q_eye_right"); await click(page, "#qNext"); await click(page, "#qBack"); ok((await text(page, "#qCount")) === "Question 1 of 12", "back works");
+  await click(page, "#lang"); await wait(200); ok((await text(page, "#qCount")).includes("12"), "AR count");
+}));
+await test("demo mode: three synthetic scenarios, no AI, no cloud, not saved, repeatable, exit works", () => withPage({}, async ({ page, external }) => {
+  const outcomes = {};
+  for (const id of ["a", "b", "c"]) {
+    await click(page, `[data-demo=${id}]`); await wait(150);
+    ok(await visible(page, "#report") && await visible(page, "#demoBanner"), "report + banner " + id); ok((await text(page, "#demoBanner")).includes("SYNTHETIC DEMO DATA"), "label " + id);
+    ok((await text(page, "#engineBadge")).includes("no AI"), "badge " + id); ok(!(await visible(page, "#explain")) && !(await visible(page, "#docSum")), "cloud-capable buttons hidden " + id);
+    outcomes[id] = await page.$eval("#overall", (e) => e.className);
+    if (id === "c") { ok((await text(page, "#qualityBox")).includes("Poor"), "poor quality"); ok((await text(page, "#overall")).includes("not reassurance"), "reassurance blocked"); ok((await text(page, "#eyesCmp")).includes("could not be assessed"), "unassessable wording"); }
+  }
+  ok(outcomes.a.includes("u-routine") && outcomes.b.includes("u-emergency") && outcomes.c.includes("u-soon"), "levels " + JSON.stringify(outcomes));
+  await click(page, "[data-demo=b]"); await wait(100); ok((await page.$eval("#overall", (e) => e.className)).includes("u-emergency"), "repeatable");
+  ok((await page.evaluate(() => (window.__sent || []).length + (window.__device || []).length)) === 0, "no AI calls"); ok(external.length === 0, "no network");
+  ok(!(await page.evaluate(() => sessionStorage.getItem("eyecheck.history.v2") || localStorage.getItem("eyecheck.history.v2"))), "demo not saved"); ok((await page.$$("#histList li.tl")).length === 0, "history list empty");
+  await click(page, "#lang"); await wait(200); ok((await text(page, "#demoBanner")).includes("بيانات تجريبية"), "AR banner survives language switch");
+  await click(page, "#demoExit"); ok(!(await visible(page, "#report")), "exit hides report");
+}));
+await test("demo does not touch real wizard progress or real history", () => withPage({}, async ({ page }) => {
+  await wizard(page); await runAnalyze(page); const n = (await page.$$("#histList li.tl")).length; ok(n === 1, "one real entry");
+  await click(page, "[data-demo=a]"); await wait(100); await click(page, "#demoExit"); ok((await page.$$("#histList li.tl")).length === 1, "still one real entry");
+}));
+await test("retention: 31-day-old persisted records are removed on load, 29-day-old survive a reload", () => withPage({}, async ({ page }) => {
+  const d = (n) => new Date(Date.now() - n * 86400000).toISOString();
+  await page.evaluate((a, b) => { const e = (at) => ({ id: "x" + at, at, summary: { eye: "right", history: ["none"] }, report: { urgency: "soon", image_quality: { overall: "good" }, symptom_summary: "x" }, source: "on_device", model: "Gemini Nano", thumb: null });
+    localStorage.setItem("eyecheck.persist.consent", "1"); localStorage.setItem("eyecheck.history.v2", JSON.stringify([e(a), e(b)])); }, d(29), d(31));
+  await page.reload({ waitUntil: "networkidle0" });
+  ok((await page.evaluate(() => JSON.parse(localStorage.getItem("eyecheck.history.v2")).length)) === 1, "expired record purged from localStorage"); ok((await page.$$("#histList li.tl")).length === 1, "one shown");
+  await page.reload({ waitUntil: "networkidle0" }); ok((await page.$$("#histList li.tl")).length === 1, "survives another reload");
+  await click(page, "#clearHist"); ok(!(await page.evaluate(() => localStorage.getItem("eyecheck.history.v2"))), "delete clears local record");
+}));
+await test("original photos are never stored: only a small thumbnail is persisted", () => withPage({}, async ({ page }) => {
+  await upload(page, "right", fx("sharp.jpg")); await wizard(page); await runAnalyze(page);
+  const sz = await page.evaluate(() => { const v = sessionStorage.getItem("eyecheck.history.v2") || ""; const j = JSON.parse(v)[0]; return { total: v.length, thumb: j.thumb ? j.thumb.length : 0, keys: Object.keys(j) }; });
+  ok(sz.thumb > 0 && sz.thumb < 20000, "thumb small: " + sz.thumb); ok(!sz.keys.includes("photos") && !sz.keys.includes("thumbs"), "no photo keys"); ok(sz.total < 40000, "record small: " + sz.total);
+}));
+await test("mobile 390px: no horizontal overflow on home, demo report, and Arabic", () => withPage({ w: 390, h: 800, lang: "ar" }, async ({ page }) => {
+  const ov = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  ok((await ov()) <= 1, "home overflow " + await ov()); await click(page, "[data-demo=b]"); await wait(200); ok((await ov()) <= 1, "demo report overflow " + await ov());
 }));
 
 await browser.close(); server.close(); cleanupFixtures();

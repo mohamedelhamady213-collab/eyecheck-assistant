@@ -13,6 +13,9 @@ export const QUESTIONS = [
   { id: "diabetes", type: "single", required: true, options: ["none", "type1", "type2", "unsure"] },
 ];
 export const MAX_TEXT = 500;
+// Single source of truth for counts shown anywhere in the UI: choice questions + one optional free-text step.
+export const QUESTION_COUNT = QUESTIONS.length;
+export const TOTAL_STEPS = QUESTIONS.length + 1;
 
 export function validate(a) {
   const errors = {};

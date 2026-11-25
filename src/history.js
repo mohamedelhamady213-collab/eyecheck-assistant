@@ -12,12 +12,26 @@ export function createHistory({ session, local, now = () => Date.now() }) {
     let list = [];
     try { list = JSON.parse(store().getItem(KEY) || "[]"); } catch { list = []; }
     if (!Array.isArray(list)) list = [];
-    const fresh = list.filter((e) => e && typeof e.at === "string" && now() - Date.parse(e.at) < TTL_DAYS * DAY);
+    const fresh = list.filter((e) => e && typeof e.at === "string" && now() - Date.parse(e.at) < TTL_DAYS * DAY && Date.parse(e.at) - now() < DAY);
     if (fresh.length !== list.length) write(fresh);
     return fresh;
   }
   function write(list) { try { store().setItem(KEY, JSON.stringify(list.slice(0, MAX_ENTRIES))); } catch { /* quota */ } }
+  // Removes expired (and malformed or far-future) records from BOTH stores. Runs at startup and whenever the page becomes visible.
+  function purgeExpired() {
+    let removed = 0;
+    for (const st of [session, local]) {
+      let list; try { list = JSON.parse(st.getItem(KEY) || "null"); } catch { list = null; }
+      if (list == null) continue;
+      if (!Array.isArray(list)) { st.removeItem(KEY); removed++; continue; }
+      const keep = list.filter((e) => e && typeof e.at === "string" && now() - Date.parse(e.at) < TTL_DAYS * DAY && Date.parse(e.at) - now() < DAY);
+      removed += list.length - keep.length;
+      if (keep.length !== list.length) { if (keep.length) st.setItem(KEY, JSON.stringify(keep)); else st.removeItem(KEY); }
+    }
+    return removed;
+  }
   return {
+    purgeExpired,
     isPersistent: persistent,
     list: read,
     add(entry) { const l = read(); l.unshift({ id: "s" + now().toString(36) + Math.random().toString(36).slice(2, 6), ...entry }); write(l); return l[0].id; },

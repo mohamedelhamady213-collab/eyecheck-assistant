@@ -26,3 +26,21 @@ test("max entries enforced", () => { const h = createHistory({ session: mem(), l
 test("compare flags differences without progression wording", () => {
   const rows = compare(entry("a", "urgent"), entry("b", "soon")); assert.equal(rows.find((r) => r.key === "urgency").same, false); assert.equal(rows.find((r) => r.key === "eye").same, true);
 });
+const DAYMS = 86400000;
+test("local (persistent) store: 29-day-old kept, 31-day-old removed, boundary at the TTL", () => {
+  const now = Date.now(); const l = mem(), s = mem(); l.setItem("eyecheck.persist.consent", "1");
+  l.setItem("eyecheck.history.v2", JSON.stringify([entry(new Date(now - 29 * DAYMS).toISOString()), entry(new Date(now - 31 * DAYMS).toISOString()), entry(new Date(now - TTL_DAYS * DAYMS).toISOString())]));
+  const h = createHistory({ session: s, local: l, now: () => now }); assert.equal(h.list().length, 1);
+  assert.equal(JSON.parse(l.getItem("eyecheck.history.v2")).length, 1); // rewritten without the expired records
+});
+test("purgeExpired cleans both stores, drops malformed and far-future records, and removes empty keys", () => {
+  const now = Date.now(); const l = mem(), s = mem();
+  s.setItem("eyecheck.history.v2", JSON.stringify([entry(new Date(now - 40 * DAYMS).toISOString()), { at: "not-a-date" }, entry(new Date(now + 10 * DAYMS).toISOString())]));
+  l.setItem("eyecheck.history.v2", JSON.stringify([entry(new Date(now - 35 * DAYMS).toISOString()), entry(new Date(now - DAYMS).toISOString())]));
+  const h = createHistory({ session: s, local: l, now: () => now }); assert.equal(h.purgeExpired(), 4);
+  assert.equal(s.getItem("eyecheck.history.v2"), null); assert.equal(JSON.parse(l.getItem("eyecheck.history.v2")).length, 1);
+});
+test("stored records never contain full photos, only a small thumbnail field", () => {
+  const h = createHistory({ session: mem(), local: mem() }); h.add(entry(new Date().toISOString())); const e = h.list()[0];
+  assert.ok(!("photos" in e) && !("dataUrl" in e) && !("thumbs" in e));
+});

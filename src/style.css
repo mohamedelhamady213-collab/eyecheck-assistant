@@ -116,3 +116,9 @@ main{padding-bottom:40px}.card,.block{margin:22px 0}
   .card,.block{break-inside:avoid;margin:10px 0}.overall,.eyebox{break-inside:avoid}.doc{display:block}
   .tbl th{background:#eee!important}a{color:#000}
 }
+
+.tagline{font-size:1.25rem;font-weight:700;margin:0 0 12px}
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+.demo-grid .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:4px;padding:14px;height:auto}.demo-grid small{font-weight:400;opacity:.85}
+.badge-demo{background:#fff3cd;color:#664d03;border:1px solid #ffda6a}[data-theme=dark] .badge-demo{background:#3b2f08;color:#ffe08a;border-color:#7a5f10}
+.demo-banner{background:#fff3cd;color:#664d03;border:2px dashed #e0a800;border-radius:12px;padding:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}[data-theme=dark] .demo-banner{background:#3b2f08;color:#ffe08a}

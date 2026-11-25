@@ -15,7 +15,7 @@ People with eye symptoms often do not know how quickly they need care, and many 
 A guided flow that keeps the sensitive part on the device:
 
 1. **Guided capture.** Instructions for distance and lighting, camera or upload, and automatic photo checks (format, size, resolution, sharpness, lighting, glare, face/eye position where the browser supports it).
-2. **Symptom check.** Eleven short questions in English or Arabic plus optional free text.
+2. **Symptom check.** 11 short questions (plus one optional free-text step, 12 steps in total; the count comes from one constant in `src/symptoms.js`) in English or Arabic plus optional free text.
 3. **Deterministic red-flag rules.** Plain code, not an LLM, decides when symptoms look urgent or like an emergency (sudden vision loss, chemical or injury exposure, flashes with blur, severe pain with redness, and similar). The banner appears the moment such an answer is given. The AI can raise but never lower this level.
 4. **On-device AI.** Gemini Nano (Firebase AI Logic `ONLY_ON_DEVICE`) describes visible features and summarizes symptoms as structured JSON.
 5. **Consent-gated cloud.** If Nano is unavailable or fails, the app says so, shows the exact payload (photos and text), and sends nothing unless the user ticks a confirmation and presses send. There is no automatic fallback.
@@ -122,3 +122,12 @@ GitHub Actions (`.github/workflows/pages.yml`) runs the unit tests, builds with 
 ## License
 
 Apache-2.0
+
+
+## Round 2 additions
+
+* **One Gemini Nano state** (`src/nanostate.js`): checking, available, initializing, ready, unavailable, init failed, processing, request failed. The badge and hint read this one state. "Ready" is only shown after initialization actually succeeded (or, if the SDK has no explicit init step, after a request worked). Initialization starts once, a second request during a running one is refused, and there is no silent cloud fallback.
+* **Demo Mode** ("Explore Demo" / "استكشف العرض التجريبي"): three synthetic scenarios (routine, urgent warning, unassessable photo). No AI, no network, never saved to history, clearly labelled SYNTHETIC DEMO DATA, with an Exit button. The urgent scenario runs the real deterministic triage rules. Report wording in demo is written by us, not by a model.
+* **30-day retention** is purged at load and when the tab is shown again, in both session and persistent storage.
+* **Question count** comes from one constant (`TOTAL_STEPS` in `src/symptoms.js`) used by the progress bar, labels and landing text.
+* **Privacy audit:** see [PRIVACY_AUDIT.md](PRIVACY_AUDIT.md).

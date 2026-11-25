@@ -18,7 +18,7 @@
       <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
       <span>EyeCheck</span>
     </a>
-    <nav class="nav" aria-label="Main"><a href="#scan" data-i18n="nav_scan">Screening</a><a href="#how" data-i18n="nav_how">How it works</a><a href="#history" data-i18n="nav_history">History</a><a href="#privacy" data-i18n="nav_privacy">Privacy</a><a href="#about" data-i18n="nav_about">About</a></nav>
+    <nav class="nav" aria-label="Main"><a href="#scan" data-i18n="nav_scan">Screening</a><a href="#how" data-i18n="nav_how">How it works</a><a href="#demo" data-i18n="nav_demo">Demo</a><a href="#history" data-i18n="nav_history">History</a><a href="#privacy" data-i18n="nav_privacy">Privacy</a><a href="#about" data-i18n="nav_about">About</a></nav>
     <div class="top-r">
       <button id="lang" class="iconbtn" type="button" aria-label="Switch language">عربي</button>
       <button id="theme" class="iconbtn" type="button" data-i18n-attr="aria-label:theme_toggle" aria-label="Toggle dark mode"><span aria-hidden="true">◐</span></button>
@@ -30,14 +30,16 @@
   <div class="wrap hero-in">
     <div class="hero-copy">
       <p class="eyebrow" data-i18n="hero_eyebrow">Preliminary eye screening, privacy first</p>
-      <h1><span data-i18n="hero_h1a">Understand your eye symptoms.</span> <span class="grad" data-i18n="hero_h1b">Keep your photos on your device.</span></h1>
+      <h1 data-i18n="hero_h1a">Your Eyes Deserve Smarter Care.</h1>
+      <p class="tagline grad" data-i18n="hero_sub">Hybrid AI. Privacy First. Smarter Eye Health Guidance.</p>
       <p class="lead" data-i18n="hero_lead">Answer a short symptom check, add eye photos, and get a structured preliminary summary. Gemini Nano analyzes everything on your device. Cloud Gemini is used only if you review what will be sent and approve it.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#scan" data-i18n="hero_cta">Start screening</a>
+        <a class="btn btn-ghost on-dark" href="#demo" data-i18n="hero_demo">Explore Demo</a>
         <a class="btn btn-ghost on-dark" href="#how" data-i18n="hero_cta2">How it works</a>
       </div>
       <ul class="trust" aria-label="Key facts">
-        <li data-i18n="trust1">On-device first</li><li data-i18n="trust2">No silent cloud fallback</li><li data-i18n="trust3">Not a diagnosis</li>
+        <li data-i18n="trust1">On-device first</li><li data-i18n="trust2">No silent cloud fallback</li><li data-i18n="trust4">Symptom safety check first</li><li data-i18n="trust3">Not a diagnosis</li>
       </ul>
     </div>
     <div class="hero-art" aria-hidden="true">
@@ -56,7 +58,7 @@
     <h2 id="how-h" data-i18n="how_h">How the screening works</h2>
     <ol class="steps4">
       <li><span class="n">1</span><b data-i18n="how1_t">Capture</b><p data-i18n="how1_d">Guided photos of each eye with automatic checks for sharpness, lighting and glare.</p></li>
-      <li><span class="n">2</span><b data-i18n="how2_t">Symptom check</b><p data-i18n="how2_d">Eleven short questions. Fixed safety rules look for red-flag symptoms before any AI runs.</p></li>
+      <li><span class="n">2</span><b data-i18n="how2_t">Symptom check</b><p data-i18n="how2_d">A short set of questions plus an optional note. Fixed safety rules look for red-flag symptoms before any AI runs.</p></li>
       <li><span class="n">3</span><b data-i18n="how3_t">On-device AI</b><p data-i18n="how3_d">Gemini Nano in Chrome describes visible features and summarizes your symptoms without sending anything out.</p></li>
       <li><span class="n">4</span><b data-i18n="how4_t">Report</b><p data-i18n="how4_d">A structured report with urgency, limits, next steps and a summary you can show a doctor.</p></li>
     </ol>
@@ -80,8 +82,19 @@
     <p class="urgent-cta" data-i18n="urg_cta">Go to an emergency department or call your local emergency number. Do not wait for this app.</p>
   </section>
 
+  <section id="demo" class="card no-print" aria-labelledby="demo-h">
+    <div class="card-h"><h2 id="demo-h" data-i18n="demo_h">Explore the demo</h2><span class="badge badge-demo" data-i18n="demo_label">SYNTHETIC DEMO DATA</span></div>
+    <p class="muted" data-i18n="demo_p">Three made-up scenarios that show how the app behaves. They need no AI, no camera and no internet, they are never saved to your history, and they are not real patients or clinical validation.</p>
+    <div class="demo-grid">
+      <button class="btn btn-ghost" type="button" data-demo="a"><b data-i18n="demo_a_t">A. Routine example</b><small data-i18n="demo_a_d">Non-urgent symptoms with educational guidance.</small></button>
+      <button class="btn btn-ghost" type="button" data-demo="b"><b data-i18n="demo_b_t">B. Urgent warning example</b><small data-i18n="demo_b_d">Warning-sign answers trigger the fixed safety rules.</small></button>
+      <button class="btn btn-ghost" type="button" data-demo="c"><b data-i18n="demo_c_t">C. Unassessable photo example</b><small data-i18n="demo_c_d">A blurry, dark photo that cannot be assessed.</small></button>
+    </div>
+  </section>
+
   <section id="scan" class="card no-print" aria-labelledby="scan-h">
-    <div class="card-h"><h2 id="scan-h" data-i18n="scan_h">Eye screening</h2><span id="engineStatus" class="badge badge-fallback" role="status" data-i18n="eng_checking">Checking on-device AI</span></div>
+    <div class="card-h"><h2 id="scan-h" data-i18n="scan_h">Eye screening</h2><span id="engineStatus" class="badge badge-fallback" role="status">Checking on-device AI</span></div>
+    <p id="engineHint" class="muted small" hidden></p>
     <ol class="stepper" id="stepper" aria-label="Progress">
       <li data-step="1"><span>1</span><b data-i18n="st_photos">Photos</b></li>
       <li data-step="2"><span>2</span><b data-i18n="st_symptoms">Symptoms</b></li>
@@ -166,6 +179,7 @@
 
   <section id="report" class="card report" hidden aria-labelledby="rep-h">
     <div class="card-h"><h2 id="rep-h" data-i18n="rep_h">Screening report</h2><span id="engineBadge" class="badge"></span></div>
+    <div id="demoBanner" class="demo-banner" role="note" hidden><b data-i18n="demo_label">SYNTHETIC DEMO DATA</b> <span data-i18n="demo_banner">Made-up example. Not a real person, not generated by AI, not saved, and not clinical validation.</span> <button id="demoExit" class="btn btn-ghost" type="button" data-i18n="demo_exit">Exit demo</button></div>
     <p id="reportMeta" class="muted"></p>
     <div id="overall" class="overall"></div>
     <p class="ai-flag" data-i18n="rep_ai_flag">Everything below marked "AI observation" is a machine description of a photo. It is not a confirmed medical finding.</p>

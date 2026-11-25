@@ -2,13 +2,13 @@ export const EN = {
   skip: "Skip to screening", theme_toggle: "Toggle dark mode",
   nav_scan: "Screening", nav_how: "How it works", nav_history: "History", nav_privacy: "Privacy", nav_about: "About",
   hero_eyebrow: "Preliminary eye screening, privacy first",
-  hero_h1a: "Understand your eye symptoms.", hero_h1b: "Keep your photos on your device.",
+  hero_h1a: "Your Eyes Deserve Smarter Care.",
   hero_lead: "Answer a short symptom check, add eye photos, and get a structured preliminary summary. Gemini Nano analyzes everything on your device. Cloud Gemini is used only if you review what will be sent and approve it.",
   hero_cta: "Start screening", hero_cta2: "How it works", trust1: "On-device first", trust2: "No silent cloud fallback", trust3: "Not a diagnosis",
   notice_b: "Preliminary screening, not a medical diagnosis.", notice_t: "AI can be wrong, and a phone photo cannot replace an eye exam. Always see an eye doctor if you are worried. In an emergency, call your local emergency number.",
   how_h: "How the screening works",
   how1_t: "Capture", how1_d: "Guided photos of each eye with automatic checks for sharpness, lighting and glare.",
-  how2_t: "Symptom check", how2_d: "Eleven short questions. Fixed safety rules look for red-flag symptoms before any AI runs.",
+  how2_t: "Symptom check", how2_d: "{questions} short questions plus an optional note. Fixed safety rules look for red-flag symptoms before any AI runs.",
   how3_t: "On-device AI", how3_d: "Gemini Nano in Chrome describes visible features and summarizes your symptoms without sending anything out.",
   how4_t: "Report", how4_d: "A structured report with urgency, limits, next steps and a summary you can show a doctor.",
   hy_title: "Hybrid inference: photos and answers stay on the device unless you approve a cloud request", hy_dev: "Your device", hy_gate: "Your consent", hy_cloud: "Cloud Gemini",
@@ -51,8 +51,8 @@ export const EN = {
   na_glaucoma: "Glaucoma", na_diabetic_retinopathy: "Diabetic retinopathy", na_amd: "Age-related macular degeneration", na_retinal_detachment: "Retinal detachment", na_cataract: "Cataract",
   na_status: "Not assessable from an external photo", na_cataract_status: "Limited: only clear cloudiness may be visible. Cannot be ruled out.",
   na_list: "glaucoma, diabetic retinopathy, macular degeneration, retinal detachment (not assessable from an external photo); cataract (limited)",
-  hist_h: "Eye health timeline", hist_clear: "Clear all", hist_persist: "Keep my history on this device between visits (up to 30 days)",
-  hist_mode_tab: "History is kept in this browser tab only and disappears when you close it.", hist_mode_dev: "History is saved on this device for up to 30 days because you allowed it. Photos are never saved, only a small thumbnail.",
+  hist_h: "Eye health timeline", hist_clear: "Clear all", hist_persist: "Keep my history on this device between visits (up to {days} days)",
+  hist_mode_tab: "History is kept in this browser tab only and disappears when you close it.", hist_mode_dev: "History is saved on this device for up to {days} days because you allowed it. Photos are never saved, only a small thumbnail.",
   hist_empty: "No screenings yet.", hist_open: "Open", hist_delete: "Delete", hist_compare: "Compare", hist_compare_with: "Compare with the previous screening",
   hist_note: "Differences between two AI-generated reports do not show that anything has improved or worsened. Photo conditions and wording change between runs.",
   cmp_h: "Comparison", cmp_item: "Item", cmp_a: "Newer", cmp_b: "Older", cmp_same: "same", cmp_diff: "different", cmp_close: "Close comparison", cmp_none: "Need at least two screenings to compare.",
@@ -64,9 +64,9 @@ export const EN = {
   priv_h: "Privacy center",
   priv_collect_h: "What the app handles", priv_collect: "Eye photos you add, your symptom answers and the optional free text. There are no accounts, no analytics and no advertising trackers.",
   priv_device_h: "What stays on your device", priv_device: "Photos and answers are processed in the browser. The on-device screening uses Gemini Nano in Chrome, so nothing is uploaded. Photos are never stored: only a small thumbnail and the report are kept in history.",
-  priv_cloud_h: "What can go to the cloud, and when", priv_cloud: "Only if you press \"Send to cloud Gemini\" after seeing a preview and ticking the confirmation, or if you press \"Plain-language explanation\" (text summary only, no photos or symptom text). Cloud requests go through Firebase AI Logic, protected by Firebase App Check.",
+  priv_cloud_h: "What can go to the cloud, and when", priv_cloud: "Only if you press \"Send to cloud Gemini\" after seeing a preview and ticking the confirmation, or if you press \"Plain-language explanation\" (a short text summary of the report, which includes its one-line symptom summary, urgency and limits, but no photos and not your raw answers or free text). Cloud requests go through Firebase AI Logic, protected by Firebase App Check.",
   priv_app_h: "Security checks that do contact Google", priv_app: "To protect the AI service from abuse, Firebase App Check runs reCAPTCHA Enterprise when the page loads. It verifies the app. It does not receive your photos or answers.",
-  priv_store_h: "What is stored locally", priv_store_tab: "Currently: report history and thumbnails in this tab only (sessionStorage), plus your language and theme choice. Nothing is saved after you close the tab, except language and theme.", priv_store_dev: "Currently: report history and thumbnails on this device for up to 30 days (localStorage), because you allowed it, plus your language and theme choice.",
+  priv_store_h: "What is stored locally", priv_store_tab: "Currently: report history and thumbnails in this tab only (sessionStorage), plus your language and theme choice. Nothing is saved after you close the tab, except language and theme.", priv_store_dev: "Currently: report history and thumbnails on this device for up to {days} days (localStorage), because you allowed it, plus your language and theme choice.",
   priv_delete_h: "Delete your data", priv_delete: "Use the button below. Closing the tab also removes tab-only history. Clearing site data in your browser removes everything.", priv_del_btn: "Delete all history and settings", priv_deleted: "Deleted. History, consent and preferences were removed from this browser.",
   log_h: "Cloud requests made in this tab", log_none: "None. Nothing has been sent to cloud Gemini in this tab.", log_photos: "{n} photo(s)", log_answers: "symptom answers", log_text_only: "text summary only", log_at: "{time} - {what} - model {model}",
   about_h: "About, methodology and limitations", about_what_h: "What it is", about_what: "EyeCheck Assistant is a preliminary screening aid built for the #BuildHybridAI 2026 hackathon on Firebase AI Logic. It organizes symptoms and describes visible features of eye photos so you can decide how quickly to seek care.",
@@ -97,20 +97,30 @@ export const EN = {
   qc_retake: "Retake recommended. The AI summary will be less reliable.", qc_good: "Photo looks usable for screening. This does not mean the AI result is accurate.",
   iq_good: "Good", iq_fair: "Fair", iq_poor: "Poor", iq_not_an_eye: "Not an eye", iq_no_image: "No image", iq_unknown: "Unknown", iq_app: "On-device check", iq_ai: "AI assessment",
   doc_title: "EyeCheck preliminary screening summary", doc_note: "Prepared by the patient with an AI-assisted screening tool. For discussion only. Not a diagnosis.", doc_symptoms: "Reported symptoms:", doc_free: "Patient's own words", doc_urgency: "Suggested urgency", doc_safety: "Safety rules triggered", doc_none: "none", doc_engine: "AI engine", doc_quality: "Photo quality", doc_ai_obs: "AI observation (not a confirmed finding)", doc_ai_sum: "AI symptom summary", doc_na: "Not assessable from photos", doc_disc: "This summary was generated by software, has not been clinically validated and must be confirmed by an examination.",
-  expl_confirm: "Send only the text summary of this report (no photos, no symptom text) to cloud Gemini?", expl_asking: "Asking cloud Gemini", expl_prompt: "Explain this preliminary eye screening result in plain, calm language for a patient. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.",
+  expl_confirm: "Send only a short text summary of this report (its symptom summary, urgency and limits; no photos, no raw answers, no free text) to cloud Gemini?", expl_asking: "Asking cloud Gemini", expl_prompt: "Explain this preliminary eye screening result in plain, calm language for a patient. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.",
   copied: "Copied",
+  hero_sub: "Hybrid AI. Privacy First. Smarter Eye Health Guidance.", hero_demo: "Explore Demo", trust4: "Symptom safety check first", nav_demo: "Demo",
+  nano_checking: "Checking on-device AI", nano_available: "On-device AI available (not started yet)", nano_download: "On-device AI available (model download needed)", nano_initializing: "Starting on-device AI", nano_ready: "On-device AI ready (Gemini Nano)", nano_unavailable: "On-device AI not available", nano_init_failed: "On-device AI failed to start", nano_processing: "On-device AI is working", nano_request_failed: "On-device request failed",
+  nano_h_unavailable: "Gemini Nano needs desktop Chrome with the Prompt API and enough free space. Your safety questions still work. Cloud Gemini is only used if you review and approve it.", nano_h_init_failed: "The model could not start: {err}. Nothing was sent anywhere. You can try again or choose cloud Gemini after reviewing what would be sent.", nano_h_request_failed: "The last on-device request failed: {err}. Nothing was sent anywhere. You can try again.", nano_h_download: "The first run downloads the model to this device, which can take a while.",
+  demo_h: "Explore the demo", demo_label: "SYNTHETIC DEMO DATA", demo_p: "Three made-up scenarios that show how the app behaves. They need no AI, no camera and no internet, they are never saved to your history, and they are not real patients or clinical validation.",
+  demo_a_t: "A. Routine example", demo_a_d: "Non-urgent symptoms with educational guidance.", demo_b_t: "B. Urgent warning example", demo_b_d: "Warning-sign answers trigger the fixed safety rules.", demo_c_t: "C. Unassessable photo example", demo_c_d: "A blurry, dark photo that cannot be assessed.",
+  demo_banner: "Made-up example. Not a real person, not generated by AI, not saved, and not clinical validation.", demo_exit: "Exit demo", eng_badge_demo: "Synthetic demo (no AI used)",
+  demo_a_sum: "Synthetic example: long-standing mild dryness after screen use, no pain, no vision change, no warning signs.", demo_a_lim: "No photo was used in this example.", demo_a_n1: "Take regular screen breaks and blink often. Learn more in the eye-care tips below.", demo_a_n2: "Book a routine eye exam if the dryness continues or bothers you.",
+  demo_b_sum: "Synthetic example: sudden vision loss, flashes, severe pain and redness in one eye, starting today.", demo_b_lim: "The fixed safety rules decided this. No AI was needed or used.", demo_b_n1: "Go to an emergency department or call your local emergency number now.", demo_b_n2: "Do not wait for an app result and do not drive yourself if your vision is affected.",
+  demo_c_sum: "Synthetic example: new redness for a few days. The photo is too blurry and dark to look at.", demo_c_lim: "The photo cannot be assessed, so nothing about the eye can be said from it. This is not reassurance.", demo_c_n1: "Retake the photo in soft daylight, hold still, and keep the whole eye in frame.", demo_c_n2: "See an eye doctor if the redness stays or gets worse.",
+  demo_c_issue1: "The photo is blurry.", demo_c_issue2: "The photo is too dark.", demo_lim1: "Synthetic demo data. Not a real person and not clinical validation.", demo_unc: "Demo only. A real screening depends on your real answers.", rep_photo_unassessed: "This photo could not be assessed.",
 };
 export const AR = {
   skip: "تخطَّ إلى الفحص", theme_toggle: "تبديل الوضع الداكن",
   nav_scan: "الفحص", nav_how: "كيف يعمل", nav_history: "السجل", nav_privacy: "الخصوصية", nav_about: "حول",
   hero_eyebrow: "فحص أولي للعين مع الخصوصية أولاً",
-  hero_h1a: "افهم أعراض عينك.", hero_h1b: "وابقِ صورك على جهازك.",
+  hero_h1a: "رعاية أذكى تبدأ بفهم صحة عينيك.",
   hero_lead: "أجب عن أسئلة قصيرة عن الأعراض، وأضف صور العين، واحصل على ملخص أولي منظّم. يحلل Gemini Nano كل شيء على جهازك. لا يُستخدم Gemini السحابي إلا إذا راجعت ما سيُرسل ووافقت عليه.",
   hero_cta: "ابدأ الفحص", hero_cta2: "كيف يعمل", trust1: "على الجهاز أولاً", trust2: "بدون تحويل صامت إلى السحابة", trust3: "ليس تشخيصاً",
   notice_b: "فحص أولي وليس تشخيصاً طبياً.", notice_t: "قد يخطئ الذكاء الاصطناعي، ولا تغني صورة الهاتف عن فحص العين. راجع طبيب العيون إذا كنت قلقاً. في الطوارئ اتصل برقم الطوارئ المحلي.",
   how_h: "كيف يعمل الفحص",
   how1_t: "التصوير", how1_d: "صور موجّهة لكل عين مع فحص تلقائي للوضوح والإضاءة والانعكاس.",
-  how2_t: "فحص الأعراض", how2_d: "أحد عشر سؤالاً قصيراً. قواعد أمان ثابتة تبحث عن الأعراض الخطيرة قبل تشغيل أي ذكاء اصطناعي.",
+  how2_t: "فحص الأعراض", how2_d: "{questions} سؤالاً قصيراً مع ملاحظة اختيارية. قواعد أمان ثابتة تبحث عن الأعراض الخطيرة قبل تشغيل أي ذكاء اصطناعي.",
   how3_t: "ذكاء اصطناعي على الجهاز", how3_d: "يصف Gemini Nano في Chrome ما يظهر في الصورة ويلخص أعراضك دون إرسال أي شيء للخارج.",
   how4_t: "التقرير", how4_d: "تقرير منظّم يشمل درجة الاستعجال والحدود والخطوات التالية وملخصاً يمكنك عرضه على الطبيب.",
   hy_title: "الاستدلال الهجين: تبقى الصور والإجابات على الجهاز إلا إذا وافقت على طلب سحابي", hy_dev: "جهازك", hy_gate: "موافقتك", hy_cloud: "Gemini السحابي",
@@ -153,8 +163,8 @@ export const AR = {
   na_glaucoma: "الجلوكوما (المياه الزرقاء)", na_diabetic_retinopathy: "اعتلال الشبكية السكري", na_amd: "التنكس البقعي المرتبط بالعمر", na_retinal_detachment: "انفصال الشبكية", na_cataract: "الساد (المياه البيضاء)",
   na_status: "لا يمكن تقييمه من صورة خارجية", na_cataract_status: "محدود: قد يظهر العتام الواضح فقط. لا يمكن استبعاده.",
   na_list: "الجلوكوما، اعتلال الشبكية السكري، التنكس البقعي، انفصال الشبكية (لا يمكن تقييمها من صورة خارجية)؛ الساد (محدود)",
-  hist_h: "الخط الزمني لصحة العين", hist_clear: "مسح الكل", hist_persist: "احتفظ بسجلي على هذا الجهاز بين الزيارات (حتى 30 يوماً)",
-  hist_mode_tab: "يُحفظ السجل في علامة تبويب المتصفح هذه فقط ويختفي عند إغلاقها.", hist_mode_dev: "يُحفظ السجل على هذا الجهاز لمدة تصل إلى 30 يوماً لأنك سمحت بذلك. لا تُحفظ الصور أبداً، فقط صورة مصغرة صغيرة.",
+  hist_h: "الخط الزمني لصحة العين", hist_clear: "مسح الكل", hist_persist: "احتفظ بسجلي على هذا الجهاز بين الزيارات (حتى {days} يوماً)",
+  hist_mode_tab: "يُحفظ السجل في علامة تبويب المتصفح هذه فقط ويختفي عند إغلاقها.", hist_mode_dev: "يُحفظ السجل على هذا الجهاز لمدة تصل إلى {days} يوماً لأنك سمحت بذلك. لا تُحفظ الصور أبداً، فقط صورة مصغرة صغيرة.",
   hist_empty: "لا توجد فحوصات بعد.", hist_open: "فتح", hist_delete: "حذف", hist_compare: "مقارنة", hist_compare_with: "قارن مع الفحص السابق",
   hist_note: "الفروق بين تقريرين من الذكاء الاصطناعي لا تثبت أن شيئاً تحسّن أو ساء. ظروف الصورة وصياغة النص تتغير بين كل تشغيل وآخر.",
   cmp_h: "المقارنة", cmp_item: "البند", cmp_a: "الأحدث", cmp_b: "الأقدم", cmp_same: "متطابق", cmp_diff: "مختلف", cmp_close: "إغلاق المقارنة", cmp_none: "تحتاج إلى فحصين على الأقل للمقارنة.",
@@ -166,9 +176,9 @@ export const AR = {
   priv_h: "مركز الخصوصية",
   priv_collect_h: "ما الذي يتعامل معه التطبيق", priv_collect: "صور العين التي تضيفها وإجاباتك عن الأعراض والنص الحر الاختياري. لا توجد حسابات ولا تحليلات ولا متتبعات إعلانية.",
   priv_device_h: "ما الذي يبقى على جهازك", priv_device: "تُعالج الصور والإجابات داخل المتصفح. يستخدم الفحص على الجهاز Gemini Nano في Chrome فلا يُرفع شيء. لا تُحفظ الصور أبداً: يُحفظ في السجل فقط صورة مصغرة صغيرة والتقرير.",
-  priv_cloud_h: "ما الذي قد يذهب إلى السحابة ومتى", priv_cloud: "فقط إذا ضغطت \"إرسال إلى Gemini السحابي\" بعد رؤية المعاينة وتأشير التأكيد، أو إذا ضغطت \"شرح مبسط\" (ملخص نصي فقط بدون صور أو نص الأعراض). تمر الطلبات السحابية عبر Firebase AI Logic المحمي بـ Firebase App Check.",
+  priv_cloud_h: "ما الذي قد يذهب إلى السحابة ومتى", priv_cloud: "فقط إذا ضغطت \"إرسال إلى Gemini السحابي\" بعد رؤية المعاينة وتأشير التأكيد، أو إذا ضغطت \"شرح مبسط\" (ملخص نصي قصير للتقرير يتضمن ملخص الأعراض في سطر واحد ودرجة الاستعجال والقيود، دون صور ودون إجاباتك الأصلية أو نصك الحر). تمر الطلبات السحابية عبر Firebase AI Logic المحمي بـ Firebase App Check.",
   priv_app_h: "فحوصات أمان تتصل بـ Google", priv_app: "لحماية خدمة الذكاء الاصطناعي من إساءة الاستخدام يشغّل Firebase App Check خدمة reCAPTCHA Enterprise عند تحميل الصفحة. يتحقق من التطبيق ولا يستقبل صورك ولا إجاباتك.",
-  priv_store_h: "ما الذي يُحفظ محلياً", priv_store_tab: "حالياً: سجل التقارير والصور المصغرة في علامة التبويب هذه فقط (sessionStorage)، مع اختيار اللغة والمظهر. لا يُحفظ شيء بعد إغلاق التبويب سوى اللغة والمظهر.", priv_store_dev: "حالياً: سجل التقارير والصور المصغرة على هذا الجهاز لمدة تصل إلى 30 يوماً (localStorage) لأنك سمحت بذلك، مع اختيار اللغة والمظهر.",
+  priv_store_h: "ما الذي يُحفظ محلياً", priv_store_tab: "حالياً: سجل التقارير والصور المصغرة في علامة التبويب هذه فقط (sessionStorage)، مع اختيار اللغة والمظهر. لا يُحفظ شيء بعد إغلاق التبويب سوى اللغة والمظهر.", priv_store_dev: "حالياً: سجل التقارير والصور المصغرة على هذا الجهاز لمدة تصل إلى {days} يوماً (localStorage) لأنك سمحت بذلك، مع اختيار اللغة والمظهر.",
   priv_delete_h: "احذف بياناتك", priv_delete: "استخدم الزر أدناه. إغلاق التبويب يزيل أيضاً سجل التبويب فقط. مسح بيانات الموقع من المتصفح يزيل كل شيء.", priv_del_btn: "احذف كل السجل والإعدادات", priv_deleted: "تم الحذف. أُزيل السجل والموافقة والتفضيلات من هذا المتصفح.",
   log_h: "الطلبات السحابية في هذا التبويب", log_none: "لا يوجد. لم يُرسل أي شيء إلى Gemini السحابي في هذا التبويب.", log_photos: "{n} صورة", log_answers: "إجابات الأعراض", log_text_only: "ملخص نصي فقط", log_at: "{time} - {what} - النموذج {model}",
   about_h: "حول التطبيق والمنهجية والحدود", about_what_h: "ما هو", about_what: "EyeCheck Assistant أداة فحص أولي بُنيت لهاكاثون #BuildHybridAI 2026 على Firebase AI Logic. ينظّم الأعراض ويصف ما يظهر في صور العين لتقرر مدى سرعة طلب الرعاية.",
@@ -197,17 +207,30 @@ export const AR = {
   qc_retake: "يُنصح بإعادة التصوير. سيكون ملخص الذكاء الاصطناعي أقل موثوقية.", qc_good: "تبدو الصورة صالحة للفحص. هذا لا يعني أن نتيجة الذكاء الاصطناعي دقيقة.",
   iq_good: "جيدة", iq_fair: "مقبولة", iq_poor: "ضعيفة", iq_not_an_eye: "ليست عيناً", iq_no_image: "لا توجد صورة", iq_unknown: "غير معروفة", iq_app: "فحص على الجهاز", iq_ai: "تقييم الذكاء الاصطناعي",
   doc_title: "ملخص فحص أولي من EyeCheck", doc_note: "أعدّه المريض بأداة فحص بمساعدة الذكاء الاصطناعي. للنقاش فقط وليس تشخيصاً.", doc_symptoms: "الأعراض المذكورة:", doc_free: "بكلمات المريض", doc_urgency: "الاستعجال المقترح", doc_safety: "قواعد الأمان التي انطلقت", doc_none: "لا شيء", doc_engine: "محرك الذكاء الاصطناعي", doc_quality: "جودة الصورة", doc_ai_obs: "ملاحظة الذكاء الاصطناعي (ليست نتيجة مؤكدة)", doc_ai_sum: "ملخص الأعراض من الذكاء الاصطناعي", doc_na: "غير قابل للتقييم من الصور", doc_disc: "أُنشئ هذا الملخص بواسطة برنامج ولم يتم التحقق منه سريرياً ويجب تأكيده بالفحص.",
-  expl_confirm: "هل تريد إرسال الملخص النصي لهذا التقرير فقط (بدون صور وبدون نص الأعراض) إلى Gemini السحابي؟", expl_asking: "جارٍ سؤال Gemini السحابي", expl_prompt: "Explain this preliminary eye screening result in plain, calm language for a patient. Write in simple Modern Standard Arabic. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.",
+  expl_confirm: "هل تريد إرسال ملخص نصي قصير لهذا التقرير فقط (ملخص الأعراض ودرجة الاستعجال والقيود، دون صور ودون إجاباتك الأصلية ودون نص حر) إلى Gemini السحابي؟", expl_asking: "جارٍ سؤال Gemini السحابي", expl_prompt: "Explain this preliminary eye screening result in plain, calm language for a patient. Write in simple Modern Standard Arabic. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.",
   copied: "تم النسخ",
+  hero_sub: "ذكاء اصطناعي محلي، خصوصية أولًا، وتوجيه صحي أكثر وعيًا.", hero_demo: "استكشف العرض التجريبي", trust4: "فحص أمان الأعراض أولاً", nav_demo: "العرض التجريبي",
+  nano_checking: "جارٍ فحص الذكاء الاصطناعي على الجهاز", nano_available: "الذكاء الاصطناعي على الجهاز متاح (لم يبدأ بعد)", nano_download: "الذكاء الاصطناعي على الجهاز متاح (يلزم تنزيل النموذج)", nano_initializing: "جارٍ تشغيل الذكاء الاصطناعي على الجهاز", nano_ready: "الذكاء الاصطناعي على الجهاز جاهز (Gemini Nano)", nano_unavailable: "الذكاء الاصطناعي على الجهاز غير متاح", nano_init_failed: "تعذّر تشغيل الذكاء الاصطناعي على الجهاز", nano_processing: "الذكاء الاصطناعي على الجهاز يعمل الآن", nano_request_failed: "فشل الطلب على الجهاز",
+  nano_h_unavailable: "يحتاج Gemini Nano إلى Chrome على الكمبيوتر مع Prompt API ومساحة فارغة كافية. أسئلة السلامة تعمل كالمعتاد. لا يُستخدم Gemini السحابي إلا بعد أن تراجع ما سيُرسل وتوافق.", nano_h_init_failed: "تعذّر تشغيل النموذج: {err}. لم يُرسل شيء إلى أي مكان. يمكنك المحاولة مرة أخرى أو اختيار Gemini السحابي بعد مراجعة ما سيُرسل.", nano_h_request_failed: "فشل آخر طلب على الجهاز: {err}. لم يُرسل شيء إلى أي مكان. يمكنك المحاولة مرة أخرى.", nano_h_download: "أول تشغيل ينزّل النموذج إلى هذا الجهاز وقد يستغرق وقتاً.",
+  demo_h: "استكشف العرض التجريبي", demo_label: "بيانات تجريبية افتراضية", demo_p: "ثلاثة سيناريوهات مختلقة توضح كيف يعمل التطبيق. لا تحتاج إلى ذكاء اصطناعي ولا كاميرا ولا إنترنت، ولا تُحفظ في سجلك، وهي ليست مرضى حقيقيين ولا إثباتاً سريرياً.",
+  demo_a_t: "أ. مثال روتيني", demo_a_d: "أعراض غير عاجلة مع إرشادات توعوية.", demo_b_t: "ب. مثال تحذير عاجل", demo_b_d: "إجابات تحمل علامات خطر تُفعّل قواعد السلامة الثابتة.", demo_c_t: "ج. مثال صورة غير قابلة للتقييم", demo_c_d: "صورة ضبابية ومظلمة لا يمكن تقييمها.",
+  demo_banner: "مثال مختلق. ليس شخصاً حقيقياً، ولم يولّده الذكاء الاصطناعي، ولا يُحفظ، وليس إثباتاً سريرياً.", demo_exit: "الخروج من العرض", eng_badge_demo: "عرض تجريبي افتراضي (دون ذكاء اصطناعي)",
+  demo_a_sum: "مثال افتراضي: جفاف خفيف قديم بعد استخدام الشاشات، دون ألم أو تغير في الرؤية أو علامات خطر.", demo_a_lim: "لم تُستخدم أي صورة في هذا المثال.", demo_a_n1: "خذ فترات راحة من الشاشة واحرص على الرمش. اطّلع على نصائح العناية بالعين أدناه.", demo_a_n2: "احجز فحص عين روتينياً إذا استمر الجفاف أو أزعجك.",
+  demo_b_sum: "مثال افتراضي: فقدان مفاجئ للرؤية مع ومضات وألم شديد واحمرار في عين واحدة، بدأ اليوم.", demo_b_lim: "قواعد السلامة الثابتة هي التي حدّدت ذلك. لم يلزم أي ذكاء اصطناعي ولم يُستخدم.", demo_b_n1: "اذهب إلى قسم الطوارئ أو اتصل برقم الطوارئ المحلي الآن.", demo_b_n2: "لا تنتظر نتيجة التطبيق ولا تقد السيارة بنفسك إذا تأثرت رؤيتك.",
+  demo_c_sum: "مثال افتراضي: احمرار جديد منذ أيام. الصورة ضبابية ومظلمة أكثر من أن تُفحص.", demo_c_lim: "لا يمكن تقييم الصورة، لذلك لا يمكن قول شيء عن العين منها. وهذا ليس طمأنة.", demo_c_n1: "أعد التقاط الصورة في ضوء نهار هادئ وثبّت يدك وأبقِ العين كاملة في الإطار.", demo_c_n2: "راجع طبيب عيون إذا استمر الاحمرار أو ازداد.",
+  demo_c_issue1: "الصورة ضبابية.", demo_c_issue2: "الصورة مظلمة جداً.", demo_lim1: "بيانات تجريبية افتراضية. ليست شخصاً حقيقياً وليست إثباتاً سريرياً.", demo_unc: "للعرض فقط. الفحص الحقيقي يعتمد على إجاباتك الفعلية.", rep_photo_unassessed: "تعذّر تقييم هذه الصورة.",
 };
 let lang = "en";
 export const getLang = () => lang;
 export function setLang(l) { lang = l === "ar" ? "ar" : "en"; }
+import { QUESTION_COUNT, TOTAL_STEPS } from "./symptoms.js";
+import { TTL_DAYS } from "./history.js";
+const DEFAULTS = { questions: QUESTION_COUNT, steps: TOTAL_STEPS, days: TTL_DAYS };
 export function t(key, vars) {
   let s = (lang === "ar" ? AR : EN)[key];
   if (s == null) s = EN[key];
   if (s == null) return key;
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll("{" + k + "}", String(v));
+  for (const [k, v] of Object.entries({ ...DEFAULTS, ...(vars || {}) })) s = s.replaceAll("{" + k + "}", String(v));
   return s;
 }
 export function translateDom(root = document) {

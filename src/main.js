@@ -2,20 +2,24 @@ import "./style.css";
 import * as models from "./firebase.js";
 import { createEngines } from "./engines.js";
 import { t, setLang, getLang, translateDom } from "./i18n.js";
-import { QUESTIONS, validate, buildSummary, summaryToText, sanitizeText, MAX_TEXT } from "./symptoms.js";
+import { QUESTIONS, QUESTION_COUNT, TOTAL_STEPS, validate, buildSummary, summaryToText, sanitizeText, MAX_TEXT } from "./symptoms.js";
 import { triage as runTriage } from "./safety.js";
 import { checkFile, scaleSize, assess, OUT_MAX } from "./imagequality.js";
 import { buildPrompt, runScreening, runCloudWithConsent, validateReport, AiError, NOT_ASSESSABLE } from "./ai.js";
 import { createHistory, compare } from "./history.js";
 import { doctorSummary } from "./report.js";
+import { createNanoManager, NANO } from "./nanostate.js";
+import { DEMOS, demoContext } from "./demo.js";
 
-const engines = createEngines(models);
+const baseEngines = createEngines(models);
+// One Gemini Nano state for the whole app. Screening goes through it, so the badge can never disagree with what actually happened.
+const nano = createNanoManager({ availability: models.nanoAvailability, init: (cb) => baseEngines.initDevice(cb), generate: (p) => baseEngines.generateDevice(p) });
+const engines = { ...baseEngines, nanoState: () => nano.check(), runDevice: (p, o) => nano.run(p, o) };
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const history = createHistory({ session: sessionStorage, local: localStorage });
 
 const state = { step: 1, photos: { left: null, right: null }, answers: { history: [], text: "" }, q: 0, triage: null, ctx: null, cloudLog: [], busy: false };
-let nanoState = "unknown";
 
 // ---------- theme + language ----------
 const root = document.documentElement;
@@ -32,17 +36,17 @@ function applyLang(l) {
 $("lang").addEventListener("click", () => applyLang(getLang() === "ar" ? "en" : "ar"));
 
 // ---------- engine badge ----------
-async function checkNano() {
-  nanoState = await engines.nanoState();
-  renderNano();
-}
 function renderNano() {
-  const b = $("engineStatus");
-  const ok = nanoState === "available" || nanoState === "readily";
-  const dl = nanoState === "downloadable" || nanoState === "downloading" || nanoState === "after-download";
-  b.className = "badge " + (ok || dl ? "badge-device" : "badge-fallback");
-  b.textContent = t(ok ? "eng_ready" : dl ? "eng_download" : nanoState === "unknown" ? "eng_checking" : "eng_unavail");
+  const { state: st, detail, needsDownload } = nano.get();
+  const b = $("engineStatus"), h = $("engineHint");
+  const good = [NANO.AVAILABLE, NANO.INITIALIZING, NANO.READY, NANO.PROCESSING].includes(st);
+  b.className = "badge " + (good ? "badge-device" : "badge-fallback"); b.dataset.state = st;
+  b.textContent = t(st === NANO.AVAILABLE && needsDownload ? "nano_download" : "nano_" + st);
+  const hint = st === NANO.UNAVAILABLE ? t("nano_h_unavailable") : st === NANO.INIT_FAILED ? t("nano_h_init_failed", { err: detail }) : st === NANO.REQUEST_FAILED ? t("nano_h_request_failed", { err: detail }) : st === NANO.AVAILABLE && needsDownload ? t("nano_h_download") : "";
+  h.textContent = hint; h.hidden = !hint;
 }
+nano.subscribe(renderNano);
+const checkNano = () => nano.check();
 
 // ---------- stepper ----------
 function setStep(n, scroll = true) {
@@ -141,7 +145,7 @@ function showTriage(tr) {
 }
 
 // ---------- symptom wizard ----------
-const TOTAL = QUESTIONS.length + 1;
+const TOTAL = TOTAL_STEPS; // single source of truth: symptoms.js
 function renderQuestion() {
   const i = state.q, isText = i >= QUESTIONS.length;
   $("qCount").textContent = t("q_of", { n: i + 1, total: TOTAL });
@@ -296,8 +300,10 @@ const U_ICON = { routine: "✓", soon: "!", urgent: "!!", emergency: "⚠" };
 function renderReport() {
   const c = state.ctx; if (!c) return;
   const r = c.report;
-  const eb = $("engineBadge"); eb.className = "badge " + (c.source === "on_device" ? "badge-device" : "badge-cloud");
-  eb.textContent = t(c.source === "on_device" ? "eng_badge_device" : "eng_badge_cloud") + (c.source === "on_device" ? "" : " · " + c.model);
+  const eb = $("engineBadge"); const demo = c.source === "demo";
+  eb.className = "badge " + (demo ? "badge-demo" : c.source === "on_device" ? "badge-device" : "badge-cloud");
+  $("demoBanner").hidden = !demo; $("explain").hidden = demo; $("docSum").hidden = demo; // demo: nothing may go to the cloud
+eb.textContent = demo ? t("eng_badge_demo") : t(c.source === "on_device" ? "eng_badge_device" : "eng_badge_cloud") + (c.source === "on_device" ? "" : " · " + c.model);
   $("reportMeta").textContent = new Date(c.at).toLocaleString(getLang() === "ar" ? "ar-EG" : undefined);
   const o = $("overall"); o.className = "overall u-" + r.urgency; o.replaceChildren();
   const ic = el("div", "u-ic", U_ICON[r.urgency]); ic.setAttribute("aria-hidden", "true");
@@ -328,7 +334,7 @@ function renderReport() {
     if (r.observations[e]) {
       b.append(el("span", "tag", t("ai_obs")));
       const ul2 = el("ul"); (r.observations[e].length ? r.observations[e] : [t("rep_no_obs")]).forEach((x) => ul2.append(el("li", null, x))); b.append(ul2);
-    } else b.append(el("p", "muted small", t("rep_no_photo")));
+    } else b.append(el("p", "muted small", t(c.thumbs[e] ? "rep_photo_unassessed" : "rep_no_photo")));
     cmp.append(b);
   }
   // assessability: fixed by the app
@@ -417,6 +423,17 @@ $("delAll").addEventListener("click", () => {
   renderHistory(); renderPrivacy(); $("delMsg").textContent = t("priv_deleted");
 });
 
+// ---------- demo mode (synthetic, no AI, never saved to history) ----------
+function startDemo(id) {
+  state.ctx = demoContext(id, t, runTriage); state.input = null;
+  renderReport(); $("report").hidden = false; $("report").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => startDemo(b.dataset.demo)));
+$("demoExit").addEventListener("click", () => {
+  if (state.ctx && state.ctx.demo) state.ctx = null;
+  $("report").hidden = true; $("demo").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 // ---------- reminder (local only) ----------
 let remindTimer = null;
 $("remind").addEventListener("click", async () => {
@@ -431,9 +448,12 @@ function renderAll() {
   renderNano(); if (state.step === 2) renderQuestion(); if (state.step === 3) renderReview();
   for (const e of ["right", "left"]) { renderQc(e); const p = state.photos[e]; if (p) slot(e).querySelector("img").alt = t("eye_" + e); }
   if (state.triage) showTriage(state.triage);
+  if (state.ctx && state.ctx.demo) state.ctx = demoContext(state.ctx.demo, t, runTriage); // re-render in the new language
   if (state.ctx && !$("report").hidden) renderReport();
   renderHistory(); renderPrivacy(); renderProgress(state.step === 4 ? 2 : 0);
 }
 applyLang(localStorage.getItem("lang") || "en");
 setStep(1, false);
+history.purgeExpired();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { history.purgeExpired(); renderHistory(); } });
 checkNano();
