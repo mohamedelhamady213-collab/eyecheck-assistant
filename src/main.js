@@ -310,12 +310,12 @@ eb.textContent = demo ? t("eng_badge_demo") : t(c.source === "on_device" ? "eng_
   const body = el("div"); body.append(el("h3", null, t("urg_" + r.urgency + "_t")), el("p", null, t("urg_" + r.urgency + "_d")));
   const why = c.triage.reasons.filter((x) => x.level !== "routine");
   if (why.length) { const ul = el("ul", "why"); why.forEach((x) => ul.append(el("li", null, t("why_" + x.id)))); body.append(el("small", null, t("rep_safety_why")), ul); }
-  body.append(el("small", "muted", t("rep_urgency_src")));
+  body.append(el("small", "muted", t(demo ? "demo_urg_src" : "rep_urgency_src")));
   if (r.reassurance_blocked) body.append(el("p", "warnline", t("rep_reassure_blocked")));
   o.append(ic, body);
   // quality
   const qb = $("qualityBox"); qb.replaceChildren();
-  const ai = el("p"); ai.append(el("b", null, t("iq_ai") + ": "), document.createTextNode(t("iq_" + r.image_quality.overall))); qb.append(ai);
+  if (!demo) { const ai = el("p"); ai.append(el("b", null, t("iq_ai") + ": "), document.createTextNode(t("iq_" + r.image_quality.overall))); qb.append(ai); } else qb.append(el("p", null, t("demo_q_" + r.image_quality.overall)));
   r.image_quality.issues.forEach((x) => qb.append(el("p", "small", x)));
   for (const e of Object.keys(c.thumbs)) { /* app-side quality was stored with the photos only in this run */ }
   if (state.input && c === state.ctx && state.input.quality) for (const [e, q] of Object.entries(state.input.quality)) qb.append(el("p", "small", t("iq_app") + " (" + t("eye_" + e) + "): " + t("iq_" + q.overall)));
