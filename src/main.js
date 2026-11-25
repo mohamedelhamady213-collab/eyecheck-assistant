@@ -1,5 +1,9 @@
 import "./style.css";
-import { deviceOnlyModel, cloudModel } from "./firebase.js";
+import { deviceOnlyModel, cloudModel, cloudModelLite } from "./firebase.js";
+async function cloudGen(input) {
+  try { return await cloudModel.generateContent(input); }
+  catch (e) { console.warn("Primary cloud model failed, trying lite:", e); return await cloudModelLite.generateContent(input); }
+}
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -142,7 +146,7 @@ async function runOnDevice(symptoms) {
   return { data: parseJson(r.response.text()), source: "on_device" };
 }
 async function runCloud(symptoms) {
-  const r = await cloudModel.generateContent(parts(symptoms));
+  const r = await cloudGen(parts(symptoms));
   return { data: parseJson(r.response.text()), source: "in_cloud" };
 }
 
@@ -282,7 +286,7 @@ $("explain").addEventListener("click", async () => {
   out.textContent = "Asking cloud Gemini";
   try {
     const sum = (lastReport.data.summary || "") + " " + (lastReport.data.screening || []).map((s) => s.condition + ": " + s.level).join("; ");
-    const r = await cloudModel.generateContent("Explain this preliminary eye screening result in plain, calm language for a patient. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.\n\n" + sum);
+    const r = await cloudGen("Explain this preliminary eye screening result in plain, calm language for a patient. No diagnosis. Say when to see an eye doctor and end with a reminder to see a professional.\n\n" + sum);
     out.className = "out"; out.textContent = r.response.text();
   } catch (e) { out.className = "out err"; out.textContent = "Cloud request failed: " + e.message; }
 });
