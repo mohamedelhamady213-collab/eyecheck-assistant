@@ -1,19 +1,170 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en" dir="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="EyeCheck Assistant: private, AI-assisted preliminary eye screening. On-device Gemini Nano first, cloud Gemini only with consent, built on Firebase AI Logic.">
+<meta name="theme-color" content="#0d47a1">
 <title>EyeCheck Assistant</title>
-<style>body{font-family:system-ui;max-width:680px;margin:2rem auto;padding:0 1rem}textarea{width:100%;height:120px}
-.warn{background:#fff4e5;border:1px solid #f5a623;padding:.7rem;border-radius:6px}.urgent{background:#fde8e8;border:1px solid #d33;padding:.7rem;border-radius:6px}
-pre{white-space:pre-wrap;background:#f5f5f5;padding:.7rem;border-radius:6px}</style></head>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230d47a1'/%3E%3Cpath d='M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z' fill='none' stroke='white' stroke-width='1.6'/%3E%3Ccircle cx='12' cy='12' r='2.6' fill='white'/%3E%3C/svg%3E">
+</head>
 <body>
-<h1>EyeCheck Assistant</h1>
-<p class="warn"><b>Informational only, not a medical diagnosis.</b> Always see an eye doctor for any concern.</p>
-<div id="urgent" class="urgent" hidden><b>Possible urgent symptoms.</b> Sudden vision loss, severe pain, flashes, a curtain over vision, chemical contact or injury need emergency care now.</div>
-<label for="symptoms">Describe your eye symptoms</label>
-<textarea id="symptoms" placeholder="e.g. Right eye is red and itchy for 3 days, no pain"></textarea>
-<p><button id="analyze">Analyze privately (on-device)</button></p>
-<h3>Private summary (made on your device)</h3><pre id="summary"></pre>
-<label><input type="checkbox" id="consent"> Send only this summary (not my original text) to cloud Gemini for a general explanation</label>
-<p><button id="explain" hidden>Get general explanation</button></p>
-<pre id="answer"></pre>
+<header class="top no-print">
+  <div class="wrap top-in">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
+      <span>EyeCheck</span>
+    </div>
+    <nav class="nav"><a href="#scan">Scan</a><a href="#history">History</a><a href="#about">About</a></nav>
+    <div class="top-r"><button id="lang" class="theme lang" type="button" aria-label="Switch language">عربي</button><span class="pill pill-soft hide-s">#BuildHybridAI</span><button id="theme" class="theme" type="button" aria-label="Toggle dark mode">◐</button></div>
+  </div>
+</header>
+
+<section class="hero no-print">
+  <div class="wrap">
+    <div class="eye3d" aria-hidden="true"><svg viewBox="0 0 200 120"><defs><radialGradient id="ir" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#00e5ff"/><stop offset=".55" stop-color="#1e88e5"/><stop offset="1" stop-color="#0d47a1"/></radialGradient><clipPath id="lid"><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z"/></clipPath></defs><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="#fff" opacity=".95"/><g clip-path="url(#lid)"><circle class="iris" cx="100" cy="60" r="34" fill="url(#ir)"/><circle cx="100" cy="60" r="15" fill="#06142b"/><circle cx="110" cy="50" r="6" fill="#fff" opacity=".85"/><rect class="scanline" x="0" y="0" width="200" height="3" fill="#00e5ff"/></g><path d="M8 60C40 14 160 14 192 60 160 106 40 106 8 60z" fill="none" stroke="#bbdefb" stroke-width="2"/></svg></div>
+    <p class="eyebrow">AI-assisted preliminary eye screening</p>
+    <h1>Check your eyes.<br><span class="grad">Keep your images private.</span></h1>
+    <p class="lead">Add eye photos and describe your symptoms. Gemini Nano analyzes them <b>on your device</b>. Cloud Gemini is used only if you give explicit consent.</p>
+    <div class="flow" aria-label="How it works">
+      <div class="step"><span class="n">1</span><b>Add photos</b><small>Upload or use the camera</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step"><span class="n">2</span><b>On-device screening</b><small>Gemini Nano, private</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step"><span class="n">3</span><b>Report</b><small>Cards, history, print</small></div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+  <div class="notice" role="note">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3L12 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <p><b>Preliminary screening, not a medical diagnosis.</b> AI can be wrong and a phone photo cannot replace an eye exam. Results show possible signs only. See an eye doctor for any concern.</p>
+  </div>
+
+  <section id="urgent" class="urgent" role="alert" hidden>
+    <div class="urgent-h">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v6M12 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <h2>Possible urgent symptoms</h2>
+    </div>
+    <p id="urgentWhy">What you described can be a warning sign. Please get care now instead of waiting.</p>
+    <ul>
+      <li>Sudden loss of vision, or a dark curtain over part of your sight</li>
+      <li>Severe eye pain, or new flashes and many new floaters</li>
+      <li>A chemical in the eye, or an injury to the eye</li>
+    </ul>
+    <p class="urgent-cta">Go to an emergency department or call your local emergency number.</p>
+  </section>
+
+  <section id="scan" class="card no-print">
+    <div class="card-h"><h2>1. Eye photos</h2><span id="engineStatus" class="badge badge-fallback">Checking on-device AI</span></div>
+    <p class="muted">Use a clear, well-lit close-up. Add one or both eyes. Two eyes are compared side by side.</p>
+    <div class="slots">
+      <div class="slot" data-eye="left">
+        <div class="slot-h">Left eye</div>
+        <div class="drop" id="drop-left"><span class="ph">No photo yet</span><img alt="Left eye preview" hidden></div>
+        <div class="slot-b">
+          <button class="btn btn-ghost" type="button" data-act="upload">Upload</button>
+          <button class="btn btn-ghost" type="button" data-act="camera">Camera</button>
+          <button class="btn btn-link" type="button" data-act="remove" hidden>Remove</button>
+        </div>
+        <input type="file" accept="image/*" hidden>
+      </div>
+      <div class="slot" data-eye="right">
+        <div class="slot-h">Right eye</div>
+        <div class="drop" id="drop-right"><span class="ph">No photo yet</span><img alt="Right eye preview" hidden></div>
+        <div class="slot-b">
+          <button class="btn btn-ghost" type="button" data-act="upload">Upload</button>
+          <button class="btn btn-ghost" type="button" data-act="camera">Camera</button>
+          <button class="btn btn-link" type="button" data-act="remove" hidden>Remove</button>
+        </div>
+        <input type="file" accept="image/*" hidden>
+      </div>
+    </div>
+
+    <h2 class="sec">2. Symptoms <span class="opt">optional</span></h2>
+    <textarea id="symptoms" rows="4" maxlength="1500" placeholder="e.g. Right eye is red and itchy for 3 days, no pain"></textarea>
+
+    <h2 class="sec">3. Privacy</h2>
+    <p class="muted" id="privacyNote">Screening runs on your device with Gemini Nano. If your browser cannot run it, nothing is sent anywhere. You will see exactly what would be sent to cloud Gemini and can choose to send it or cancel.</p>
+    <div id="cloudPreview" class="preview" hidden>
+      <h3>Send to cloud Gemini?</h3>
+      <p class="muted" id="cloudWhy"></p>
+      <div id="cloudThumbs" class="thumbs"></div>
+      <pre id="cloudText" class="out"></pre>
+      <div class="row"><button id="cloudSend" class="btn btn-cloud" type="button">Send to cloud Gemini</button><button id="cloudCancel" class="btn btn-ghost" type="button">Cancel, keep private</button></div>
+    </div>
+    <div class="row">
+      <button id="analyze" class="btn btn-primary" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Run screening</span>
+      </button>
+      <span class="hint"><span class="dot dot-device"></span>On-device first</span>
+    </div>
+    <p id="scanMsg" class="msg" hidden></p>
+  </section>
+
+  <section id="report" class="card result" hidden>
+    <div class="card-h">
+      <h2>Screening report</h2>
+      <span id="engineBadge" class="badge badge-device">On-device</span>
+    </div>
+    <p class="muted" id="reportMeta"></p>
+    <div id="overall" class="overall"></div>
+    <div id="cards" class="grid"></div>
+    <div id="eyesCmp" class="cmp"></div>
+    <div id="steps" class="steps"></div>
+    <div class="disc">Preliminary AI-assisted screening only. Not a medical diagnosis and not clinically validated. Please see an eye doctor for any concern. In an emergency, contact local emergency services.</div>
+    <div class="row no-print">
+      <button id="print" class="btn btn-primary" type="button">Print / save as PDF</button>
+      <button id="explain" class="btn btn-cloud" type="button">Explain in plain language (cloud, text only)</button>
+    </div>
+    <div id="explainOut" class="out" hidden></div>
+  </section>
+
+  <section id="history" class="card no-print">
+    <div class="card-h"><h2>Session history</h2><button id="clearHist" class="btn btn-link" type="button" hidden>Clear all</button></div>
+    <p class="muted">Saved only in this browser tab for this session. Photos are never stored, only a small thumbnail.</p>
+    <div id="histList" class="hist"><p class="muted" id="histEmpty">No scans yet.</p></div>
+  </section>
+
+  <section id="tips" class="two no-print">
+    <div class="card"><h2 data-i="tipsT">Eye-care tips</h2><ul class="tips">
+      <li data-i="tip1">Follow the 20-20-20 rule: every 20 minutes look at something 20 feet away for 20 seconds.</li>
+      <li data-i="tip2">Blink often and keep screens slightly below eye level.</li>
+      <li data-i="tip3">Wear sunglasses with UV protection outdoors.</li>
+      <li data-i="tip4">Never rub your eyes. Wash hands before touching them or contact lenses.</li>
+      <li data-i="tip5">Get a full eye exam regularly, and yearly if you have diabetes.</li></ul>
+      <button id="remind" class="btn btn-ghost" type="button" data-i="remindB">Remind me every 20 minutes</button><p id="remindMsg" class="muted" hidden></p></div>
+    <div class="card"><h2 data-i="docT">Finding the right doctor</h2><ul class="tips">
+      <li data-i="doc1"><b>Optometrist:</b> vision tests, glasses, routine checks.</li>
+      <li data-i="doc2"><b>Ophthalmologist:</b> eye diseases, surgery, urgent problems.</li>
+      <li data-i="doc3">Bring your list of symptoms, medicines, and any earlier eye reports.</li>
+      <li data-i="doc4">Sudden vision change, severe pain, or injury: go to an emergency department.</li>
+      <li data-i="doc5">Search your local health directory or ask your insurer for in-network eye doctors.</li></ul></div>
+  </section>
+
+  <section id="about" class="engines no-print">
+    <div class="engine"><span class="badge badge-device">On-device</span><p>Gemini Nano in Chrome through Firebase AI Logic. Photos and text stay in your browser.</p></div>
+    <div class="engine"><span class="badge badge-cloud">Cloud</span><p>Gemini through Firebase AI Logic, only with your consent, protected by App Check.</p></div>
+  </section>
+</main>
+
+<dialog id="camDlg" class="cam">
+  <video id="camVideo" autoplay playsinline muted></video>
+  <p id="camErr" class="msg" hidden></p>
+  <div class="row">
+    <button id="camShot" class="btn btn-primary" type="button">Capture</button>
+    <button id="camClose" class="btn btn-ghost" type="button">Cancel</button>
+  </div>
+</dialog>
+
+<footer class="foot no-print">
+  <div class="wrap">
+    <p>Built with Firebase AI Logic, Gemini Nano and Gemini. Open source (Apache-2.0). Not a medical device.</p>
+    <p><a href="https://github.com/mohamedelhamady213-collab/eyecheck-assistant" target="_blank" rel="noopener">View source on GitHub</a></p>
+  </div>
+</footer>
 <script type="module" src="/src/main.js"></script>
-</body></html>
+</body>
+</html>
