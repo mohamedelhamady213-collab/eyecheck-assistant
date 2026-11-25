@@ -27,5 +27,5 @@ export const deviceOnlyModel = getGenerativeModel(ai, { mode: "only_on_device" }
 // 2) Cloud Gemini: used only after the user explicitly consents.
 export const cloudModel = getGenerativeModel(ai, {
   mode: "only_in_cloud",
-  inCloudParams: { model: "gemini-2.5-flash" },
+  inCloudParams: { model: "gemini-3.8-flash" },
 });
