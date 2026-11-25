@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getAI, GoogleAIBackend, getGenerativeModel } from "firebase/ai";
 
-// Fill with your Firebase web app config (Firebase console > Project settings).
+// Firebase web app config comes from Vite env vars (see .env.example).
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -21,13 +21,10 @@ initializeAppCheck(app, {
 });
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 
-// Hybrid inference: on-device Gemini Nano first, cloud Gemini as fallback.
-export const onDeviceModel = getGenerativeModel(ai, {
-  mode: "prefer_on_device",
-  inCloudParams: { model: "gemini-2.5-flash-lite" },
-});
-
-// Cloud-only model for the optional, opt-in explanation step.
+// Hybrid inference with Firebase AI Logic.
+// 1) On-device only (Gemini Nano in Chrome): nothing leaves the browser.
+export const deviceOnlyModel = getGenerativeModel(ai, { mode: "only_on_device" });
+// 2) Cloud Gemini: used only after the user explicitly consents.
 export const cloudModel = getGenerativeModel(ai, {
   mode: "only_in_cloud",
   inCloudParams: { model: "gemini-2.5-flash" },
