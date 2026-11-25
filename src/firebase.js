@@ -29,3 +29,8 @@ export const cloudModel = getGenerativeModel(ai, {
   mode: "only_in_cloud",
   inCloudParams: { model: "gemini-3.8-flash" },
 });
+// Fallback cloud model if the main one is overloaded.
+export const cloudModelLite = getGenerativeModel(ai, {
+  mode: "only_in_cloud",
+  inCloudParams: { model: "gemini-3.5-flash-lite" },
+});
